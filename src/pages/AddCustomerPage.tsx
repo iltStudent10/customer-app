@@ -1,10 +1,13 @@
+import { useNavigate } from 'react-router-dom'
+import { CustomerForm } from '../components/CustomerForm'
+
 export function AddCustomerPage() {
+  const navigate = useNavigate()
+
   return (
     <section>
       <h2 className="page-title">Add Customer</h2>
-      <div className="placeholder-card">
-        Customer form will be implemented in the core feature phase.
-      </div>
+      <CustomerForm onSubmit={() => navigate('/')} onCancel={() => navigate('/')} />
     </section>
   )
 }
