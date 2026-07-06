@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { CustomerList } from '../components/CustomerList'
 import type { Customer } from '../types/customer'
+import { useCustomerContext } from '../hooks/useCustomerContext'
 
 export function CustomerListPage() {
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const { customers, setCustomers, deleteCustomer } = useCustomerContext()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,9 +41,7 @@ export function CustomerListPage() {
         throw new Error('Failed to delete customer.')
       }
 
-      setCustomers((currentCustomers) =>
-        currentCustomers.filter((customer) => customer.id !== id),
-      )
+      deleteCustomer(id)
     } catch {
       setError('Unable to delete customer right now.')
     }
