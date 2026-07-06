@@ -3,7 +3,7 @@ import type { CustomerFormData } from '../types/customer'
 
 interface CustomerFormProps {
   initialData?: CustomerFormData
-  onSubmit: (formData: CustomerFormData) => void
+  onSubmit: (formData: CustomerFormData) => void | Promise<void>
   onCancel: () => void
 }
 
@@ -67,7 +67,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     })
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     const validationErrors = validate(formData)
@@ -76,7 +76,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       return
     }
 
-    onSubmit(formData)
+    await onSubmit(formData)
   }
 
   return (
