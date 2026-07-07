@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({
       errorMessage: error.message,
-      errorDetails: errorInfo.componentStack,
+      errorDetails: errorInfo.componentStack ?? '',
     })
   }
 
