@@ -183,6 +183,25 @@ body {
   background: #f9fafb;
 }
 
+.sort-header {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sort-indicator {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
 .customer-table tbody tr:last-child td {
   border-bottom: none;
 }

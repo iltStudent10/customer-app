@@ -1,26 +1,88 @@
-import { useMemo, useState } from 'react'
-import { CustomerList } from '../components/CustomerList'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  CustomerList,
+  type CustomerSortState,
+  type SortableCustomerField,
+} from '../components/CustomerList'
 import { useCustomerApi } from '../hooks/useCustomerApi'
+
+const SORT_STORAGE_KEY = 'customer-list-sort'
+
+function getInitialSortState(): CustomerSortState {
+  if (typeof window === 'undefined') {
+    return { field: 'name', direction: 'asc' }
+  }
+
+  const storedSort = window.localStorage.getItem(SORT_STORAGE_KEY)
+  if (!storedSort) {
+    return { field: 'name', direction: 'asc' }
+  }
+
+  try {
+    const parsedSort = JSON.parse(storedSort) as CustomerSortState
+    if (
+      ['name', 'email', 'city', 'state'].includes(parsedSort.field) &&
+      ['asc', 'desc'].includes(parsedSort.direction)
+    ) {
+      return parsedSort
+    }
+  } catch {
+    return { field: 'name', direction: 'asc' }
+  }
+
+  return { field: 'name', direction: 'asc' }
+}
 
 export function CustomerListPage() {
   const { customers, isLoading, error, deleteCustomer } = useCustomerApi()
   const [searchTerm, setSearchTerm] = useState('')
+  const [sort, setSort] = useState<CustomerSortState>(getInitialSortState)
 
-  const filteredCustomers = useMemo(() => {
+  useEffect(() => {
+    window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
+  }, [sort])
+
+  const filteredAndSortedCustomers = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase()
 
-    if (!normalizedSearch) {
-      return customers
-    }
+    const filteredCustomers = customers.filter((customer) => {
+      if (!normalizedSearch) {
+        return true
+      }
 
-    return customers.filter((customer) => {
       const fieldsToSearch = [customer.name, customer.email, customer.city]
 
       return fieldsToSearch.some((field) =>
         field.toLowerCase().includes(normalizedSearch),
       )
     })
-  }, [customers, searchTerm])
+
+    const sortedCustomers = [...filteredCustomers].sort((a, b) => {
+      const aValue = a[sort.field].toLowerCase()
+      const bValue = b[sort.field].toLowerCase()
+      const compareResult = aValue.localeCompare(bValue)
+
+      return sort.direction === 'asc' ? compareResult : compareResult * -1
+    })
+
+    return sortedCustomers
+  }, [customers, searchTerm, sort])
+
+  const handleSort = (field: SortableCustomerField) => {
+    setSort((currentSort) => {
+      if (currentSort.field === field) {
+        return {
+          field,
+          direction: currentSort.direction === 'asc' ? 'desc' : 'asc',
+        }
+      }
+
+      return {
+        field,
+        direction: 'asc',
+      }
+    })
+  }
 
   const handleDeleteCustomer = (id: number) => {
     const customer = customers.find((item) => item.id === id)
@@ -65,12 +127,17 @@ export function CustomerListPage() {
           )}
         </div>
         <p className="results-count">
-          Showing {filteredCustomers.length} of {customers.length} customers
+          Showing {filteredAndSortedCustomers.length} of {customers.length} customers
         </p>
       </div>
       {isLoading && <div className="placeholder-card">Loading customers...</div>}
       {error && <div className="placeholder-card">{error}</div>}
-      <CustomerList customers={filteredCustomers} onDelete={handleDeleteCustomer} />
+      <CustomerList
+        customers={filteredAndSortedCustomers}
+        onDelete={handleDeleteCustomer}
+        sort={sort}
+        onSort={handleSort}
+      />
     </section>
   )
 }
