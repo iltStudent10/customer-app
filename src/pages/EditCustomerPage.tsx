@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CustomerForm } from '../components/CustomerForm'
 import type { CustomerFormData } from '../types/customer'
@@ -7,6 +8,7 @@ export function EditCustomerPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { customers, updateCustomer, isLoading, error } = useCustomerApi()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const customerId = Number(id)
   const customer = customers.find((item) => item.id === customerId)
@@ -49,7 +51,12 @@ export function EditCustomerPage() {
   }
 
   const handleSubmit = async (formData: CustomerFormData) => {
-    const wasUpdated = await updateCustomer({ id: customerId, ...formData })
+    setIsSubmitting(true)
+    const wasUpdated = await updateCustomer({ id: customerId, ...formData }).finally(
+      () => {
+        setIsSubmitting(false)
+      },
+    )
 
     if (wasUpdated) {
       navigate('/')
@@ -60,7 +67,7 @@ export function EditCustomerPage() {
     <section>
       <h2 className="page-title">Edit Customer</h2>
       <p className="page-subtitle">Customer ID: {customerId}</p>
-      {isLoading && <div className="placeholder-card">Updating customer...</div>}
+      {isSubmitting && <div className="placeholder-card">Updating customer...</div>}
       {error && <div className="placeholder-card">{error}</div>}
       <CustomerForm
         initialData={initialData}
