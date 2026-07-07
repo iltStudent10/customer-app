@@ -73,3 +73,17 @@ export default defineConfig([
 ])
 
 ```
+
+## 6.4 Troubleshooting JSON Server
+
+- Port already in use:
+  - Change the JSON Server port in `package.json` script `api` (for example `--port 3002`).
+  - Update the Vite proxy target in `vite.config.ts` to the same port.
+
+- Data not persisting:
+  - Ensure write operations use `POST`, `PUT`, or `DELETE` (not only `GET`).
+  - Confirm `db.json` is changing after write requests.
+
+- CORS errors in browser:
+  - Verify Vite proxy is configured in `vite.config.ts`.
+  - Ensure frontend fetch calls use `/api/customers` (and `/api/customers/:id`), not direct `http://localhost:3001/...` URLs.
