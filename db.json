@@ -49,16 +49,6 @@
       "city": "Boston",
       "state": "MA",
       "zip": "02108"
-    },
-    {
-      "name": "Day1 Test",
-      "email": "day1@test.com",
-      "phone": "555-0999",
-      "address": "100 Test St",
-      "city": "Austin",
-      "state": "TX",
-      "zip": "73301",
-      "id": 6
     }
   ]
 }
