@@ -8,17 +8,6 @@ interface CustomerDbPayload {
 
 const LOCAL_CUSTOMERS_STORAGE_KEY = 'customer-app-customers'
 
-function isLocalDevelopmentEnvironment() {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  return (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  )
-}
-
 function readStoredCustomers() {
   if (typeof window === 'undefined') {
     return null
@@ -149,20 +138,15 @@ export function useCustomerApi() {
         await refreshCustomers()
         return true
       } catch {
-        if (!isLocalDevelopmentEnvironment()) {
-          const maxId = customers.reduce(
-            (highestId, customer) => (customer.id > highestId ? customer.id : highestId),
-            0,
-          )
+        const maxId = customers.reduce(
+          (highestId, customer) => (customer.id > highestId ? customer.id : highestId),
+          0,
+        )
 
-          const nextCustomers = [...customers, { id: maxId + 1, ...formData }]
-          setCustomers(nextCustomers)
-          writeStoredCustomers(nextCustomers)
-          return true
-        }
-
-        setError('Unable to add customer right now.')
-        return false
+        const nextCustomers = [...customers, { id: maxId + 1, ...formData }]
+        setCustomers(nextCustomers)
+        writeStoredCustomers(nextCustomers)
+        return true
       } finally {
         setIsLoading(false)
       }
@@ -189,18 +173,13 @@ export function useCustomerApi() {
         await refreshCustomers()
         return true
       } catch {
-        if (!isLocalDevelopmentEnvironment()) {
-          const nextCustomers = customers.map((item) =>
-            item.id === customer.id ? customer : item,
-          )
+        const nextCustomers = customers.map((item) =>
+          item.id === customer.id ? customer : item,
+        )
 
-          setCustomers(nextCustomers)
-          writeStoredCustomers(nextCustomers)
-          return true
-        }
-
-        setError('Unable to update customer right now.')
-        return false
+        setCustomers(nextCustomers)
+        writeStoredCustomers(nextCustomers)
+        return true
       } finally {
         setIsLoading(false)
       }
@@ -225,15 +204,10 @@ export function useCustomerApi() {
         await refreshCustomers()
         return true
       } catch {
-        if (!isLocalDevelopmentEnvironment()) {
-          const nextCustomers = customers.filter((customer) => customer.id !== id)
-          setCustomers(nextCustomers)
-          writeStoredCustomers(nextCustomers)
-          return true
-        }
-
-        setError('Unable to delete customer right now.')
-        return false
+        const nextCustomers = customers.filter((customer) => customer.id !== id)
+        setCustomers(nextCustomers)
+        writeStoredCustomers(nextCustomers)
+        return true
       } finally {
         setIsLoading(false)
       }

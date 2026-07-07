@@ -34,7 +34,7 @@ describe('CustomerForm', () => {
 
         await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
         await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
-        await userEvent.type(screen.getByLabelText(/phone/i), '555-0101')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
 
         const submitButton = screen.getByRole('button', { name: /add customer/i })
         await userEvent.click(submitButton)
@@ -42,12 +42,31 @@ describe('CustomerForm', () => {
         expect(handleSubmit).toHaveBeenCalledWith({
             name: 'John Doe',
             email: 'john.doe@example.com',
-            phone: '555-0101',
+            phone: '5550101234',
             address: '',
             city: '',
             state: '',
             zip: '',
         })
+    })
+    it('shows an error when phone has fewer than 10 digits', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '555-0101')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('Phone must be at least 10 digits.')).toBeInTheDocument()
     })
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()

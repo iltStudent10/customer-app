@@ -40,8 +40,12 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       nextErrors.email = 'Enter a valid email address.'
     }
 
+    const normalizedPhone = values.phone.replace(/\D/g, '')
+
     if (!values.phone.trim()) {
       nextErrors.phone = 'Phone is required.'
+    } else if (normalizedPhone.length < 10) {
+      nextErrors.phone = 'Phone must be at least 10 digits.'
     }
 
     return nextErrors
