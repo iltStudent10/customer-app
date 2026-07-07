@@ -90,8 +90,15 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             value={formData.name}
             onChange={(event) => handleFieldChange('name', event.target.value)}
             className={errors.name ? 'input-error' : ''}
+            required
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? 'name-error' : undefined}
           />
-          {errors.name && <p className="field-error">{errors.name}</p>}
+          {errors.name && (
+            <p id="name-error" className="field-error" role="alert">
+              {errors.name}
+            </p>
+          )}
         </div>
 
         <div className="form-field">
@@ -102,8 +109,15 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             value={formData.email}
             onChange={(event) => handleFieldChange('email', event.target.value)}
             className={errors.email ? 'input-error' : ''}
+            required
+            aria-invalid={Boolean(errors.email)}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
-          {errors.email && <p className="field-error">{errors.email}</p>}
+          {errors.email && (
+            <p id="email-error" className="field-error" role="alert">
+              {errors.email}
+            </p>
+          )}
         </div>
 
         <div className="form-field">
@@ -114,8 +128,15 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             value={formData.phone}
             onChange={(event) => handleFieldChange('phone', event.target.value)}
             className={errors.phone ? 'input-error' : ''}
+            required
+            aria-invalid={Boolean(errors.phone)}
+            aria-describedby={errors.phone ? 'phone-error' : undefined}
           />
-          {errors.phone && <p className="field-error">{errors.phone}</p>}
+          {errors.phone && (
+            <p id="phone-error" className="field-error" role="alert">
+              {errors.phone}
+            </p>
+          )}
         </div>
 
         <div className="form-field">

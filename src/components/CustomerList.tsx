@@ -16,11 +16,11 @@ export function CustomerList({ customers, onDelete }: CustomerListProps) {
       <table className="customer-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>City</th>
-            <th>Actions</th>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Phone</th>
+            <th scope="col">City</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -31,12 +31,17 @@ export function CustomerList({ customers, onDelete }: CustomerListProps) {
               <td>{customer.phone}</td>
               <td>{customer.city}</td>
               <td className="actions-cell">
-                <Link className="action-link" to={`/edit/${customer.id}`}>
+                <Link
+                  className="action-link"
+                  to={`/edit/${customer.id}`}
+                  aria-label={`Edit ${customer.name}`}
+                >
                   Edit
                 </Link>
                 <button
                   type="button"
                   className="action-button"
+                  aria-label={`Delete ${customer.name}`}
                   onClick={() => onDelete(customer.id)}
                 >
                   Delete

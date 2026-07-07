@@ -5,6 +5,17 @@ export function CustomerListPage() {
   const { customers, isLoading, error, deleteCustomer } = useCustomerApi()
 
   const handleDeleteCustomer = (id: number) => {
+    const customer = customers.find((item) => item.id === id)
+    const customerName = customer?.name ?? 'this customer'
+
+    const isConfirmed = window.confirm(
+      `Are you sure you want to delete ${customerName}?`,
+    )
+
+    if (!isConfirmed) {
+      return
+    }
+
     void deleteCustomer(id)
   }
 
