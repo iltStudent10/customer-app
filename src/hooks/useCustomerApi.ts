@@ -2,20 +2,37 @@ import { useCallback, useEffect, useState } from 'react'
 import { useCustomerContext } from './useCustomerContext'
 import type { Customer, CustomerFormData } from '../types/customer'
 
+interface CustomerDbPayload {
+  customers: Customer[]
+}
+
 export function useCustomerApi() {
   const { customers, setCustomers } = useCustomerContext()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refreshCustomers = useCallback(async () => {
-    const response = await fetch('/api/customers')
+    try {
+      const response = await fetch('/api/customers')
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch customers.')
+      if (!response.ok) {
+        throw new Error('Failed to fetch customers.')
+      }
+
+      const data = (await response.json()) as Customer[]
+      setCustomers(data)
+      return
+    } catch {
+      const staticDataPath = `${import.meta.env.BASE_URL}db.json`
+      const staticResponse = await fetch(staticDataPath)
+
+      if (!staticResponse.ok) {
+        throw new Error('Failed to fetch customers.')
+      }
+
+      const staticPayload = (await staticResponse.json()) as CustomerDbPayload
+      setCustomers(staticPayload.customers)
     }
-
-    const data = (await response.json()) as Customer[]
-    setCustomers(data)
   }, [setCustomers])
 
   const fetchCustomers = useCallback(async () => {
