@@ -10,8 +10,10 @@ export function EditCustomerPage() {
   const { customers, updateCustomer, isLoading, error } = useCustomerApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const customerId = Number(id)
-  const customer = customers.find((item) => item.id === customerId)
+  const routeCustomerId = id ?? ''
+  const customer = customers.find(
+    (item) => String(item.id) === routeCustomerId,
+  )
 
   if (isLoading && customers.length === 0) {
     return (
@@ -22,7 +24,7 @@ export function EditCustomerPage() {
     )
   }
 
-  if (error && customers.length === 0) {
+  if (!customer && error) {
     return (
       <section>
         <h2 className="page-title">Edit Customer</h2>
@@ -52,7 +54,7 @@ export function EditCustomerPage() {
 
   const handleSubmit = async (formData: CustomerFormData) => {
     setIsSubmitting(true)
-    const wasUpdated = await updateCustomer({ id: customerId, ...formData }).finally(
+    const wasUpdated = await updateCustomer({ id: customer.id, ...formData }).finally(
       () => {
         setIsSubmitting(false)
       },
@@ -66,7 +68,7 @@ export function EditCustomerPage() {
   return (
     <section>
       <h2 className="page-title">Edit Customer</h2>
-      <p className="page-subtitle">Customer ID: {customerId}</p>
+      <p className="page-subtitle">Customer ID: {customer.id}</p>
       {isSubmitting && <div className="placeholder-card">Updating customer...</div>}
       {error && <div className="placeholder-card">{error}</div>}
       <CustomerForm

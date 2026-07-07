@@ -4,7 +4,7 @@ import type { Customer, CustomerFormData } from '../types/customer'
 
 export function useCustomerApi() {
   const { customers, setCustomers } = useCustomerContext()
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(customers.length === 0)
   const [error, setError] = useState<string | null>(null)
 
   const refreshCustomers = useCallback(async () => {
@@ -32,6 +32,10 @@ export function useCustomerApi() {
   }, [refreshCustomers])
 
   useEffect(() => {
+    if (customers.length > 0) {
+      return
+    }
+
     let isMounted = true
 
     const loadInitialCustomers = async () => {
@@ -53,7 +57,7 @@ export function useCustomerApi() {
     return () => {
       isMounted = false
     }
-  }, [refreshCustomers])
+  }, [customers.length, refreshCustomers])
 
   const addCustomer = useCallback(
     async (formData: CustomerFormData) => {
