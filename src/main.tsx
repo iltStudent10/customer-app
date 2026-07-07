@@ -5,9 +5,13 @@ import { CustomerProvider } from './context/CustomerContext'
 import './index.css'
 import App from './App.tsx'
 
+const baseUrl = import.meta.env.BASE_URL
+const routerBasename =
+  baseUrl === '/' ? '/' : baseUrl.replace(/\/$/, '')
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename={routerBasename}>
       <CustomerProvider>
         <App />
       </CustomerProvider>
