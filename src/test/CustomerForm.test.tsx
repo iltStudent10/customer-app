@@ -49,7 +49,7 @@ describe('CustomerForm', () => {
             zip: '',
         })
     })
-    it('shows an error when phone has fewer than 10 digits', async () => {
+    it('shows an error when phone has fewer than 7 digits', async () => {
         const handleSubmit = vi.fn()
 
         render(
@@ -60,13 +60,13 @@ describe('CustomerForm', () => {
 
         await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
         await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
-        await userEvent.type(screen.getByLabelText(/phone/i), '555-0101')
+        await userEvent.type(screen.getByLabelText(/phone/i), '555-01')
 
         const submitButton = screen.getByRole('button', { name: /add customer/i })
         await userEvent.click(submitButton)
 
         expect(handleSubmit).not.toHaveBeenCalled()
-        expect(screen.getByText('Phone must be at least 10 digits.')).toBeInTheDocument()
+        expect(screen.getByText('Phone must be at least 7 digits.')).toBeInTheDocument()
     })
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()

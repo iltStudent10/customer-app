@@ -44,8 +44,8 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
     if (!values.phone.trim()) {
       nextErrors.phone = 'Phone is required.'
-    } else if (normalizedPhone.length < 10) {
-      nextErrors.phone = 'Phone must be at least 10 digits.'
+    } else if (normalizedPhone.length < 7) {
+      nextErrors.phone = 'Phone must be at least 7 digits.'
     }
 
     return nextErrors
