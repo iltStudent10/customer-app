@@ -1,21 +1,59 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CustomerForm } from '../components/CustomerForm'
-import type { CustomerFormData } from '../types/customer'
+import type { Customer, CustomerFormData } from '../types/customer'
 import { useCustomerApi } from '../hooks/useCustomerApi'
 
 export function EditCustomerPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { customers, updateCustomer, isLoading, error } = useCustomerApi()
+  const { customers, updateCustomer, getCustomerById, error } = useCustomerApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isCustomerLoading, setIsCustomerLoading] = useState(true)
+  const [customer, setCustomer] = useState<Customer | null>(null)
 
-  const routeCustomerId = id ?? ''
-  const customer = customers.find(
-    (item) => String(item.id) === routeCustomerId,
-  )
+  const routeCustomerId = Number(id)
 
-  if (isLoading && customers.length === 0) {
+  useEffect(() => {
+    let isMounted = true
+
+    const loadCustomer = async () => {
+      if (!Number.isInteger(routeCustomerId) || routeCustomerId <= 0) {
+        if (isMounted) {
+          setCustomer(null)
+          setIsCustomerLoading(false)
+        }
+        return
+      }
+
+      const existingCustomer = customers.find((item) => item.id === routeCustomerId)
+      if (existingCustomer) {
+        if (isMounted) {
+          setCustomer(existingCustomer)
+          setIsCustomerLoading(false)
+        }
+        return
+      }
+
+      if (isMounted) {
+        setIsCustomerLoading(true)
+      }
+
+      const fetchedCustomer = await getCustomerById(routeCustomerId)
+      if (isMounted) {
+        setCustomer(fetchedCustomer)
+        setIsCustomerLoading(false)
+      }
+    }
+
+    void loadCustomer()
+
+    return () => {
+      isMounted = false
+    }
+  }, [customers, routeCustomerId, getCustomerById])
+
+  if (isCustomerLoading) {
     return (
       <section>
         <h2 className="page-title">Edit Customer</h2>

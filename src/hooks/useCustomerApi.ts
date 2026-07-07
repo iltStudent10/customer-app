@@ -1,24 +1,75 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCustomerContext } from './useCustomerContext'
 import type { Customer, CustomerFormData } from '../types/customer'
+
+interface FetchCustomersOptions {
+  page?: number
+  perPage?: number
+  searchTerm?: string
+  sortField?: string
+  sortDirection?: 'asc' | 'desc'
+}
+
+interface FetchCustomersResult {
+  customers: Customer[]
+  totalCustomers: number
+}
 
 export function useCustomerApi() {
   const { customers, setCustomers } = useCustomerContext()
   const [isLoading, setIsLoading] = useState(customers.length === 0)
   const [error, setError] = useState<string | null>(null)
+  const [totalCustomers, setTotalCustomers] = useState(customers.length)
+  const lastQueryRef = useRef<FetchCustomersOptions>({ page: 1, perPage: 10 })
+
+  const requestCustomers = useCallback(
+    async (options: FetchCustomersOptions): Promise<FetchCustomersResult> => {
+      const params = new URLSearchParams()
+      params.set('_page', String(options.page ?? 1))
+      params.set('_limit', String(options.perPage ?? 10))
+
+      const normalizedSearch = options.searchTerm?.trim()
+      if (normalizedSearch) {
+        params.set('q', normalizedSearch)
+      }
+
+      if (options.sortField) {
+        params.set('_sort', options.sortField)
+        params.set('_order', options.sortDirection ?? 'asc')
+      }
+
+      const response = await fetch(`/api/customers?${params.toString()}`)
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch customers.')
+      }
+
+      const data = (await response.json()) as Customer[]
+      const totalCountHeader = Number(response.headers.get('X-Total-Count'))
+      const resolvedTotalCount =
+        Number.isFinite(totalCountHeader) && totalCountHeader >= 0
+          ? totalCountHeader
+          : data.length
+
+      return {
+        customers: data,
+        totalCustomers: resolvedTotalCount,
+      }
+    },
+    [],
+  )
 
   const refreshCustomers = useCallback(async () => {
-    const response = await fetch('/api/customers')
+    const data = await requestCustomers(lastQueryRef.current)
+    setCustomers(data.customers)
+    setTotalCustomers(data.totalCustomers)
+  }, [requestCustomers, setCustomers])
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch customers.')
+  const fetchCustomers = useCallback(async (options?: FetchCustomersOptions) => {
+    if (options) {
+      lastQueryRef.current = { ...lastQueryRef.current, ...options }
     }
 
-    const data = (await response.json()) as Customer[]
-    setCustomers(data)
-  }, [setCustomers])
-
-  const fetchCustomers = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
@@ -58,6 +109,34 @@ export function useCustomerApi() {
       isMounted = false
     }
   }, [customers.length, refreshCustomers])
+
+  const getCustomerById = useCallback(
+    async (id: number) => {
+      const existingCustomer = customers.find((customer) => customer.id === id)
+      if (existingCustomer) {
+        return existingCustomer
+      }
+
+      try {
+        const response = await fetch(`/api/customers/${id}`)
+
+        if (response.status === 404) {
+          return null
+        }
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch customer.')
+        }
+
+        const data = (await response.json()) as Customer
+        return data
+      } catch {
+        setError('Unable to load customer right now.')
+        return null
+      }
+    },
+    [customers],
+  )
 
   const addCustomer = useCallback(
     async (formData: CustomerFormData) => {
@@ -143,9 +222,11 @@ export function useCustomerApi() {
 
   return {
     customers,
+    totalCustomers,
     isLoading,
     error,
     fetchCustomers,
+    getCustomerById,
     addCustomer,
     updateCustomer,
     deleteCustomer,

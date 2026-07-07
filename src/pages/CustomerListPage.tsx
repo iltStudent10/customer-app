@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CustomerList,
   type CustomerSortState,
@@ -34,42 +34,38 @@ function getInitialSortState(): CustomerSortState {
 }
 
 export function CustomerListPage() {
-  const { customers, isLoading, error, deleteCustomer } = useCustomerApi()
+  const { customers, totalCustomers, isLoading, error, fetchCustomers, deleteCustomer } =
+    useCustomerApi()
   const [searchTerm, setSearchTerm] = useState('')
   const [sort, setSort] = useState<CustomerSortState>(getInitialSortState)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   useEffect(() => {
     window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
   }, [sort])
 
-  const filteredAndSortedCustomers = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase()
-
-    const filteredCustomers = customers.filter((customer) => {
-      if (!normalizedSearch) {
-        return true
-      }
-
-      const fieldsToSearch = [customer.name, customer.email, customer.city]
-
-      return fieldsToSearch.some((field) =>
-        field.toLowerCase().includes(normalizedSearch),
-      )
+  useEffect(() => {
+    void fetchCustomers({
+      page: currentPage,
+      perPage: rowsPerPage,
+      searchTerm,
+      sortField: sort.field,
+      sortDirection: sort.direction,
     })
+  }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers])
 
-    const sortedCustomers = [...filteredCustomers].sort((a, b) => {
-      const aValue = a[sort.field].toLowerCase()
-      const bValue = b[sort.field].toLowerCase()
-      const compareResult = aValue.localeCompare(bValue)
-
-      return sort.direction === 'asc' ? compareResult : compareResult * -1
-    })
-
-    return sortedCustomers
-  }, [customers, searchTerm, sort])
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / rowsPerPage))
+  const firstResultIndex = totalCustomers === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const lastResultIndex = Math.min(
+    (currentPage - 1) * rowsPerPage + customers.length,
+    totalCustomers,
+  )
 
   const handleSort = (field: SortableCustomerField) => {
     setSort((currentSort) => {
+      setCurrentPage(1)
+
       if (currentSort.field === field) {
         return {
           field,
@@ -96,7 +92,13 @@ export function CustomerListPage() {
       return
     }
 
-    void deleteCustomer(id)
+    void (async () => {
+      const wasDeleted = await deleteCustomer(id)
+
+      if (wasDeleted && customers.length === 1 && currentPage > 1) {
+        setCurrentPage((page) => page - 1)
+      }
+    })()
   }
 
   return (
@@ -113,31 +115,74 @@ export function CustomerListPage() {
             type="text"
             placeholder="Search by name, email, or city"
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => {
+              setCurrentPage(1)
+              setSearchTerm(event.target.value)
+            }}
           />
           {searchTerm && (
             <button
               type="button"
               className="clear-search-button"
               aria-label="Clear search"
-              onClick={() => setSearchTerm('')}
+              onClick={() => {
+                setCurrentPage(1)
+                setSearchTerm('')
+              }}
             >
               ×
             </button>
           )}
         </div>
-        <p className="results-count">
-          Showing {filteredAndSortedCustomers.length} of {customers.length} customers
-        </p>
+        <div className="results-summary-row">
+          <p className="results-count">
+            Showing {firstResultIndex}-{lastResultIndex} of {totalCustomers} customers
+          </p>
+          <label htmlFor="rows-per-page" className="rows-per-page-label">
+            Rows per page
+            <select
+              id="rows-per-page"
+              className="rows-per-page-select"
+              value={rowsPerPage}
+              onChange={(event) => {
+                setCurrentPage(1)
+                setRowsPerPage(Number(event.target.value))
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
       </div>
       {isLoading && <div className="placeholder-card">Loading customers...</div>}
       {error && <div className="placeholder-card">{error}</div>}
       <CustomerList
-        customers={filteredAndSortedCustomers}
+        customers={customers}
         onDelete={handleDeleteCustomer}
         sort={sort}
         onSort={handleSort}
       />
+      <div className="pagination-row" aria-label="Pagination">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </button>
+        <p className="page-indicator">Page {currentPage} of {totalPages}</p>
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </button>
+      </div>
     </section>
   )
 }
