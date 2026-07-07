@@ -6,13 +6,15 @@ import type { CustomerFormData } from '../types/customer'
 
 export function AddCustomerPage() {
   const navigate = useNavigate()
-  const { addCustomer, isLoading, error } = useCustomerApi()
+  const { addCustomer, error } = useCustomerApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (formData: CustomerFormData) => {
     setIsSubmitting(true)
-    const wasCreated = await addCustomer(formData)
-    setIsSubmitting(false)
+
+    const wasCreated = await addCustomer(formData).finally(() => {
+      setIsSubmitting(false)
+    })
 
     if (wasCreated) {
       navigate('/')
@@ -22,9 +24,7 @@ export function AddCustomerPage() {
   return (
     <section>
       <h2 className="page-title">Add Customer</h2>
-      {isSubmitting && isLoading && (
-        <div className="placeholder-card">Saving customer...</div>
-      )}
+      {isSubmitting && <div className="placeholder-card">Saving customer...</div>}
       {error && <div className="placeholder-card">{error}</div>}
       <CustomerForm onSubmit={handleSubmit} onCancel={() => navigate('/')} />
     </section>
