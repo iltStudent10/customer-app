@@ -11,7 +11,7 @@ function wrapper({ children }: PropsWithChildren) {
 describe('useCustomerApi', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
-    vi.spyOn(global, 'fetch')
+    vi.spyOn(globalThis, 'fetch')
   })
 
   afterEach(() => {
@@ -19,14 +19,14 @@ describe('useCustomerApi', () => {
   })
 
   it('fetches paginated customers and exposes total count', async () => {
-    const fetchMock = vi.mocked(global.fetch)
+    const fetchMock = vi.mocked(globalThis.fetch)
 
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [],
         headers: { get: () => '0' },
-      } as Response)
+      } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
         json: async () => [
@@ -42,7 +42,7 @@ describe('useCustomerApi', () => {
           },
         ],
         headers: { get: () => '21' },
-      } as Response)
+      } as unknown as Response)
 
     const { result } = renderHook(() => useCustomerApi(), { wrapper })
 
@@ -69,9 +69,9 @@ describe('useCustomerApi', () => {
   })
 
   it('adds a customer and refreshes the list', async () => {
-    const fetchMock = vi.mocked(global.fetch)
+    const fetchMock = vi.mocked(globalThis.fetch)
 
-    fetchMock.mockImplementation(async (input, init) => {
+    fetchMock.mockImplementation(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
       const url =
         typeof input === 'string'
           ? input
@@ -96,7 +96,7 @@ describe('useCustomerApi', () => {
             },
           ],
           headers: { get: () => '1' },
-        } as Response
+        } as unknown as Response
       }
 
       if (url.endsWith('/api/customers') && method === 'POST') {
@@ -105,14 +105,14 @@ describe('useCustomerApi', () => {
           json: async () => ({
             id: 7,
           }),
-        } as Response
+        } as unknown as Response
       }
 
       return {
         ok: true,
         json: async () => [],
         headers: { get: () => '0' },
-      } as Response
+      } as unknown as Response
     })
 
     const { result } = renderHook(() => useCustomerApi(), { wrapper })
@@ -140,7 +140,7 @@ describe('useCustomerApi', () => {
   })
 
   it('sets an error message when customer fetch fails', async () => {
-    const fetchMock = vi.mocked(global.fetch)
+    const fetchMock = vi.mocked(globalThis.fetch)
     fetchMock.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useCustomerApi(), { wrapper })

@@ -4,6 +4,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 
 function ThrowError() {
   throw new Error('Boundary crash')
+  return null
 }
 
 describe('ErrorBoundary', () => {

@@ -6,11 +6,11 @@ import { CustomerProvider } from '../context/CustomerContext'
 
 describe('App routing', () => {
   it('renders the add customer form when navigating to /add', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => [],
       headers: { get: () => '0' },
-    } as Response)
+    } as unknown as Response)
 
     render(
       <MemoryRouter initialEntries={['/add']}>

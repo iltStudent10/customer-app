@@ -48,7 +48,7 @@ describe('AddCustomerPage', () => {
     vi.mocked(useCustomerApi).mockReturnValue({
       addCustomer,
       error: null,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     render(
       <MemoryRouter>
@@ -75,7 +75,7 @@ describe('AddCustomerPage', () => {
     vi.mocked(useCustomerApi).mockReturnValue({
       addCustomer,
       error: 'Unable to add customer right now.',
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     render(
       <MemoryRouter>

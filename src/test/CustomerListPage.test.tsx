@@ -37,7 +37,7 @@ describe('CustomerListPage', () => {
       error: null,
       fetchCustomers,
       deleteCustomer,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     render(
       <MemoryRouter>
@@ -80,7 +80,7 @@ describe('CustomerListPage', () => {
       error: null,
       fetchCustomers,
       deleteCustomer,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     render(
       <MemoryRouter>
@@ -135,7 +135,7 @@ describe('CustomerListPage', () => {
       error: null,
       fetchCustomers,
       deleteCustomer,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     render(
       <MemoryRouter>

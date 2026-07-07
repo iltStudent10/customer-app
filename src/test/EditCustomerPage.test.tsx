@@ -79,7 +79,7 @@ describe('EditCustomerPage', () => {
       updateCustomer,
       getCustomerById,
       error: null,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     renderPage('/edit/1')
 
@@ -111,7 +111,7 @@ describe('EditCustomerPage', () => {
       updateCustomer,
       getCustomerById,
       error: 'Unable to load customer right now.',
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     renderPage('/edit/99')
 
@@ -128,7 +128,7 @@ describe('EditCustomerPage', () => {
       updateCustomer,
       getCustomerById,
       error: null,
-    } as ReturnType<typeof useCustomerApi>)
+    } as unknown as ReturnType<typeof useCustomerApi>)
 
     renderPage('/edit/777')
 
