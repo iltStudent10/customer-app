@@ -29,14 +29,22 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
   const validate = (values: CustomerFormData) => {
     const nextErrors: Partial<Record<keyof CustomerFormData, string>> = {}
+    const trimmedName = values.name.trim()
+    const trimmedEmail = values.email.trim()
 
-    if (!values.name.trim()) {
+    if (!trimmedName) {
       nextErrors.name = 'Name is required.'
+    } else if (trimmedName.length < 2) {
+      nextErrors.name = 'Name must be at least 2 characters.'
     }
 
-    if (!values.email.trim()) {
+    if (!trimmedEmail) {
       nextErrors.email = 'Email is required.'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
+    } else if (trimmedEmail.length < 2) {
+      nextErrors.email = 'Email must be at least 2 characters.'
+    } else if (!trimmedEmail.includes('@')) {
+      nextErrors.email = 'Email must include @.'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       nextErrors.email = 'Enter a valid email address.'
     }
 

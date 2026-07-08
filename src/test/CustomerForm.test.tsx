@@ -68,6 +68,48 @@ describe('CustomerForm', () => {
         expect(handleSubmit).not.toHaveBeenCalled()
         expect(screen.getByText('Phone must be at least 7 digits.')).toBeInTheDocument()
     })
+
+    it('shows errors when name or email are fewer than 2 characters', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'J')
+        await userEvent.type(screen.getByLabelText(/email/i), 'a')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('Name must be at least 2 characters.')).toBeInTheDocument()
+        expect(screen.getByText('Email must be at least 2 characters.')).toBeInTheDocument()
+    })
+
+    it('shows an error when email does not include @', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('Email must include @.')).toBeInTheDocument()
+    })
+
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()
 
