@@ -154,6 +154,82 @@ describe('CustomerForm', () => {
         expect(screen.queryByText('Phone can only contain numbers.')).not.toBeInTheDocument()
     })
 
+    it('keeps only numeric characters in the ZIP field and limits to 5 digits', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const zipInput = screen.getByLabelText(/zip/i)
+        await userEvent.type(zipInput, 'ab12c3456!')
+
+        expect(zipInput).toHaveValue('12345')
+    })
+
+    it('shows a clear error when non-numeric ZIP characters are entered', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const zipInput = screen.getByLabelText(/zip/i)
+        await userEvent.type(zipInput, 'abc')
+
+        expect(zipInput).toHaveValue('')
+        expect(screen.getByText('ZIP can only contain numbers.')).toBeInTheDocument()
+    })
+
+    it('shows an error when ZIP is not exactly 5 digits on submit', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/zip/i), '1234')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('ZIP must be exactly 5 digits.')).toBeInTheDocument()
+    })
+
+    it('allows submit when ZIP is exactly 5 digits', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/zip/i), '12345')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).toHaveBeenCalledWith({
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            phone: '5550101234',
+            address: '',
+            city: '',
+            state: '',
+            zip: '12345',
+        })
+    })
+
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()
 

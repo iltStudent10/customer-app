@@ -31,6 +31,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     const nextErrors: Partial<Record<keyof CustomerFormData, string>> = {}
     const trimmedName = values.name.trim()
     const trimmedEmail = values.email.trim()
+    const trimmedZip = values.zip.trim()
 
     if (!trimmedName) {
       nextErrors.name = 'Name is required.'
@@ -56,6 +57,10 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       nextErrors.phone = 'Phone must be at least 7 digits.'
     }
 
+    if (trimmedZip && trimmedZip.length !== 5) {
+      nextErrors.zip = 'ZIP must be exactly 5 digits.'
+    }
+
     return nextErrors
   }
 
@@ -65,9 +70,18 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
   ) => {
     const hasInvalidPhoneCharacters =
       field === 'phone' && typeof value === 'string' && /\D/.test(value)
+    const hasInvalidZipCharacters =
+      field === 'zip' && typeof value === 'string' && /\D/.test(value)
+    const hasZipLengthOverflow =
+      field === 'zip' && typeof value === 'string' && value.replace(/\D/g, '').length > 5
 
-    const nextValue =
-      field === 'phone' && typeof value === 'string' ? value.replace(/\D/g, '') : value
+    let nextValue = value
+    if (field === 'phone' && typeof value === 'string') {
+      nextValue = value.replace(/\D/g, '')
+    }
+    if (field === 'zip' && typeof value === 'string') {
+      nextValue = value.replace(/\D/g, '').slice(0, 5)
+    }
 
     setFormData((currentFormData) => ({
       ...currentFormData,
@@ -79,6 +93,16 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
       if (hasInvalidPhoneCharacters) {
         nextErrors.phone = 'Phone can only contain numbers.'
+        return nextErrors
+      }
+
+      if (hasInvalidZipCharacters) {
+        nextErrors.zip = 'ZIP can only contain numbers.'
+        return nextErrors
+      }
+
+      if (hasZipLengthOverflow) {
+        nextErrors.zip = 'ZIP can only be 5 digits.'
         return nextErrors
       }
 
@@ -198,9 +222,19 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="zip"
             type="text"
+            inputMode="numeric"
+            maxLength={5}
             value={formData.zip}
             onChange={(event) => handleFieldChange('zip', event.target.value)}
+            className={errors.zip ? 'input-error' : ''}
+            aria-invalid={Boolean(errors.zip)}
+            aria-describedby={errors.zip ? 'zip-error' : undefined}
           />
+          {errors.zip && (
+            <p id="zip-error" className="field-error" role="alert">
+              {errors.zip}
+            </p>
+          )}
         </div>
       </div>
 
