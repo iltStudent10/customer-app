@@ -63,18 +63,29 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     field: keyof CustomerFormData,
     value: CustomerFormData[keyof CustomerFormData],
   ) => {
+    const hasInvalidPhoneCharacters =
+      field === 'phone' && typeof value === 'string' && /\D/.test(value)
+
+    const nextValue =
+      field === 'phone' && typeof value === 'string' ? value.replace(/\D/g, '') : value
+
     setFormData((currentFormData) => ({
       ...currentFormData,
-      [field]: value,
+      [field]: nextValue,
     }))
 
     setErrors((currentErrors) => {
-      if (!currentErrors[field]) {
-        return currentErrors
+      const nextErrors = { ...currentErrors }
+
+      if (hasInvalidPhoneCharacters) {
+        nextErrors.phone = 'Phone can only contain numbers.'
+        return nextErrors
       }
 
-      const nextErrors = { ...currentErrors }
-      delete nextErrors[field]
+      if (nextErrors[field]) {
+        delete nextErrors[field]
+      }
+
       return nextErrors
     })
   }
@@ -137,6 +148,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="phone"
             type="text"
+            inputMode="numeric"
             value={formData.phone}
             onChange={(event) => handleFieldChange('phone', event.target.value)}
             className={errors.phone ? 'input-error' : ''}

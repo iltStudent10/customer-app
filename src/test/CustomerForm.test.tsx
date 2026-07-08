@@ -110,6 +110,50 @@ describe('CustomerForm', () => {
         expect(screen.getByText('Email must include @.')).toBeInTheDocument()
     })
 
+    it('keeps only numeric characters in the phone field', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const phoneInput = screen.getByLabelText(/phone/i)
+        await userEvent.type(phoneInput, 'abc-555x010!')
+
+        expect(phoneInput).toHaveValue('555010')
+    })
+
+    it('shows a clear error when non-numeric phone characters are entered', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const phoneInput = screen.getByLabelText(/phone/i)
+        await userEvent.type(phoneInput, 'abc')
+
+        expect(phoneInput).toHaveValue('')
+        expect(screen.getByText('Phone can only contain numbers.')).toBeInTheDocument()
+    })
+
+    it('clears phone non-numeric error after entering valid digits', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const phoneInput = screen.getByLabelText(/phone/i)
+        await userEvent.type(phoneInput, 'abc')
+        expect(screen.getByText('Phone can only contain numbers.')).toBeInTheDocument()
+
+        await userEvent.type(phoneInput, '5550101')
+
+        expect(phoneInput).toHaveValue('5550101')
+        expect(screen.queryByText('Phone can only contain numbers.')).not.toBeInTheDocument()
+    })
+
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()
 
