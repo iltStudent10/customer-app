@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useMemo,
   useReducer,
   type PropsWithChildren,
@@ -42,17 +43,43 @@ function customerReducer(state: Customer[], action: CustomerAction): Customer[] 
 export function CustomerProvider({ children }: PropsWithChildren) {
   const [customers, dispatch] = useReducer(customerReducer, [])
 
+  const setCustomers = useCallback(
+    (nextCustomers: Customer[]) => {
+      dispatch({ type: 'SET_CUSTOMERS', payload: nextCustomers })
+    },
+    [dispatch],
+  )
+
+  const addCustomer = useCallback(
+    (customer: Customer) => {
+      dispatch({ type: 'ADD_CUSTOMER', payload: customer })
+    },
+    [dispatch],
+  )
+
+  const updateCustomer = useCallback(
+    (customer: Customer) => {
+      dispatch({ type: 'UPDATE_CUSTOMER', payload: customer })
+    },
+    [dispatch],
+  )
+
+  const deleteCustomer = useCallback(
+    (id: number) => {
+      dispatch({ type: 'DELETE_CUSTOMER', payload: id })
+    },
+    [dispatch],
+  )
+
   const value = useMemo<CustomerContextValue>(
     () => ({
       customers,
-      setCustomers: (nextCustomers) =>
-        dispatch({ type: 'SET_CUSTOMERS', payload: nextCustomers }),
-      addCustomer: (customer) => dispatch({ type: 'ADD_CUSTOMER', payload: customer }),
-      updateCustomer: (customer) =>
-        dispatch({ type: 'UPDATE_CUSTOMER', payload: customer }),
-      deleteCustomer: (id) => dispatch({ type: 'DELETE_CUSTOMER', payload: id }),
+      setCustomers,
+      addCustomer,
+      updateCustomer,
+      deleteCustomer,
     }),
-    [customers],
+    [customers, setCustomers, addCustomer, updateCustomer, deleteCustomer],
   )
 
   return <CustomerContext.Provider value={value}>{children}</CustomerContext.Provider>
