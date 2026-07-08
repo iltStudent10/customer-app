@@ -40,6 +40,8 @@ export function CustomerListPage() {
   const [sort, setSort] = useState<CustomerSortState>(getInitialSortState)
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const totalPages = Math.max(1, Math.ceil(totalCustomers / rowsPerPage))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
 
   useEffect(() => {
     window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort))
@@ -47,18 +49,18 @@ export function CustomerListPage() {
 
   useEffect(() => {
     void fetchCustomers({
-      page: currentPage,
+      page: Math.min(Math.max(1, currentPage), totalPages),
       perPage: rowsPerPage,
       searchTerm,
       sortField: sort.field,
       sortDirection: sort.direction,
     })
-  }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers])
+  }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers, totalPages])
 
-  const totalPages = Math.max(1, Math.ceil(totalCustomers / rowsPerPage))
-  const firstResultIndex = totalCustomers === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const firstResultIndex =
+    totalCustomers === 0 ? 0 : (safeCurrentPage - 1) * rowsPerPage + 1
   const lastResultIndex = Math.min(
-    (currentPage - 1) * rowsPerPage + customers.length,
+    (safeCurrentPage - 1) * rowsPerPage + customers.length,
     totalCustomers,
   )
 
@@ -168,17 +170,17 @@ export function CustomerListPage() {
         <button
           type="button"
           className="secondary-button"
-          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-          disabled={currentPage === 1}
+          onClick={() => setCurrentPage((page) => Math.max(1, Math.min(totalPages, page) - 1))}
+          disabled={safeCurrentPage <= 1}
         >
           Previous
         </button>
-        <p className="page-indicator">Page {currentPage} of {totalPages}</p>
+        <p className="page-indicator">Page {safeCurrentPage} of {totalPages}</p>
         <button
           type="button"
           className="secondary-button"
-          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage((page) => Math.min(totalPages, Math.max(1, page) + 1))}
+          disabled={safeCurrentPage >= totalPages}
         >
           Next
         </button>

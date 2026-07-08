@@ -70,6 +70,22 @@ describe('CustomerListPage', () => {
         sortDirection: 'asc',
       })
     })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+
+    await waitFor(() => {
+      expect(fetchCustomers).toHaveBeenCalledWith({
+        page: 3,
+        perPage: 10,
+        searchTerm: '',
+        sortField: 'name',
+        sortDirection: 'asc',
+      })
+    })
+
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeEnabled()
   })
 
   it('applies search and rows-per-page changes', async () => {
