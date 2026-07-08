@@ -26,7 +26,7 @@ export function useCustomerApi() {
     async (options: FetchCustomersOptions): Promise<FetchCustomersResult> => {
       const params = new URLSearchParams()
       params.set('_page', String(options.page ?? 1))
-      params.set('_limit', String(options.perPage ?? 10))
+      params.set('_per_page', String(options.perPage ?? 10))
 
       const normalizedSearch = options.searchTerm?.trim()
       if (normalizedSearch) {

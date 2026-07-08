@@ -61,7 +61,7 @@ describe('useCustomerApi', () => {
     })
 
     expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/customers?_page=2&_limit=10&q=maria&_sort=name&_order=asc',
+      '/api/customers?_page=2&_per_page=10&q=maria&_sort=name&_order=asc',
     )
     expect(result.current.customers).toHaveLength(1)
     expect(result.current.totalCustomers).toBe(21)
