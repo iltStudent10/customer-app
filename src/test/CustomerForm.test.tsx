@@ -230,6 +230,96 @@ describe('CustomerForm', () => {
         })
     })
 
+    it('keeps only letters in the state field and limits to 2 characters', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const stateInput = screen.getByLabelText(/state/i)
+        await userEvent.type(stateInput, 'c1a$lif')
+
+        expect(stateInput).toHaveValue('ca')
+    })
+
+    it('shows a clear error when non-letter state characters are entered', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const stateInput = screen.getByLabelText(/state/i)
+        await userEvent.type(stateInput, '1!')
+
+        expect(stateInput).toHaveValue('')
+        expect(screen.getByText('State can only contain letters.')).toBeInTheDocument()
+    })
+
+    it('shows a clear error when more than 2 state letters are entered', async () => {
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        const stateInput = screen.getByLabelText(/state/i)
+        await userEvent.type(stateInput, 'CAL')
+
+        expect(stateInput).toHaveValue('CA')
+        expect(screen.getByText('State can only be 2 letters.')).toBeInTheDocument()
+    })
+
+    it('shows an error when state is not exactly 2 letters on submit', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/state/i), 'C')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('State must be exactly 2 letters.')).toBeInTheDocument()
+    })
+
+    it('allows submit when state is exactly 2 letters', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/state/i), 'CA')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).toHaveBeenCalledWith({
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            phone: '5550101234',
+            address: '',
+            city: '',
+            state: 'CA',
+            zip: '',
+        })
+    })
+
     it('calls onCancel when the cancel button is clicked', async () => {
         const handleCancel = vi.fn()
 

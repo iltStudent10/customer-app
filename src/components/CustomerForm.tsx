@@ -31,6 +31,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     const nextErrors: Partial<Record<keyof CustomerFormData, string>> = {}
     const trimmedName = values.name.trim()
     const trimmedEmail = values.email.trim()
+    const trimmedState = values.state.trim()
     const trimmedZip = values.zip.trim()
 
     if (!trimmedName) {
@@ -61,6 +62,10 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       nextErrors.zip = 'ZIP must be exactly 5 digits.'
     }
 
+    if (trimmedState && trimmedState.length !== 2) {
+      nextErrors.state = 'State must be exactly 2 letters.'
+    }
+
     return nextErrors
   }
 
@@ -74,6 +79,10 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       field === 'zip' && typeof value === 'string' && /\D/.test(value)
     const hasZipLengthOverflow =
       field === 'zip' && typeof value === 'string' && value.replace(/\D/g, '').length > 5
+    const hasInvalidStateCharacters =
+      field === 'state' && typeof value === 'string' && /[^a-zA-Z]/.test(value)
+    const hasStateLengthOverflow =
+      field === 'state' && typeof value === 'string' && value.replace(/[^a-zA-Z]/g, '').length > 2
 
     let nextValue = value
     if (field === 'phone' && typeof value === 'string') {
@@ -81,6 +90,9 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     }
     if (field === 'zip' && typeof value === 'string') {
       nextValue = value.replace(/\D/g, '').slice(0, 5)
+    }
+    if (field === 'state' && typeof value === 'string') {
+      nextValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 2)
     }
 
     setFormData((currentFormData) => ({
@@ -103,6 +115,16 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
       if (hasZipLengthOverflow) {
         nextErrors.zip = 'ZIP can only be 5 digits.'
+        return nextErrors
+      }
+
+      if (hasInvalidStateCharacters) {
+        nextErrors.state = 'State can only contain letters.'
+        return nextErrors
+      }
+
+      if (hasStateLengthOverflow) {
+        nextErrors.state = 'State can only be 2 letters.'
         return nextErrors
       }
 
@@ -212,9 +234,18 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="state"
             type="text"
+            inputMode="text"
             value={formData.state}
             onChange={(event) => handleFieldChange('state', event.target.value)}
+            className={errors.state ? 'input-error' : ''}
+            aria-invalid={Boolean(errors.state)}
+            aria-describedby={errors.state ? 'state-error' : undefined}
           />
+          {errors.state && (
+            <p id="state-error" className="field-error" role="alert">
+              {errors.state}
+            </p>
+          )}
         </div>
 
         <div className="form-field">
