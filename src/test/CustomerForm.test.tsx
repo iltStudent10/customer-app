@@ -49,6 +49,34 @@ describe('CustomerForm', () => {
             zip: '',
         })
     })
+
+    it('trims and normalizes email/state casing before submit', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), '  John Doe  ')
+        await userEvent.type(screen.getByLabelText(/email/i), '  John.Doe@Example.COM  ')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/state/i), 'ca')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).toHaveBeenCalledWith({
+            name: 'John Doe',
+            email: 'john.doe@example.com',
+            phone: '5550101234',
+            address: '',
+            city: '',
+            state: 'CA',
+            zip: '',
+        })
+    })
     it('shows an error when phone has fewer than 7 digits', async () => {
         const handleSubmit = vi.fn()
 
@@ -88,6 +116,28 @@ describe('CustomerForm', () => {
         expect(handleSubmit).not.toHaveBeenCalled()
         expect(screen.getByText('Name must be at least 2 characters.')).toBeInTheDocument()
         expect(screen.getByText('Email must be at least 2 characters.')).toBeInTheDocument()
+    })
+
+    it('shows an error when name has invalid characters', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John123')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(
+            screen.getByText('Name can only contain letters, spaces, apostrophes, and hyphens.'),
+        ).toBeInTheDocument()
     })
 
     it('shows an error when email does not include @', async () => {
@@ -240,7 +290,7 @@ describe('CustomerForm', () => {
         const stateInput = screen.getByLabelText(/state/i)
         await userEvent.type(stateInput, 'c1a$lif')
 
-        expect(stateInput).toHaveValue('ca')
+        expect(stateInput).toHaveValue('CA')
     })
 
     it('shows a clear error when non-letter state characters are entered', async () => {
@@ -318,6 +368,50 @@ describe('CustomerForm', () => {
             state: 'CA',
             zip: '',
         })
+    })
+
+    it('shows an error when city has invalid characters', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/city/i), 'Dallas2')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(
+            screen.getByText('City can only contain letters, spaces, apostrophes, and hyphens.'),
+        ).toBeInTheDocument()
+    })
+
+    it('shows an error when address is too short', async () => {
+        const handleSubmit = vi.fn()
+
+        render(
+            <MemoryRouter>
+                <CustomerForm onSubmit={handleSubmit} onCancel={vi.fn()} />
+            </MemoryRouter>,
+        )
+
+        await userEvent.type(screen.getByLabelText(/name/i), 'John Doe')
+        await userEvent.type(screen.getByLabelText(/email/i), 'john.doe@example.com')
+        await userEvent.type(screen.getByLabelText(/phone/i), '5550101234')
+        await userEvent.type(screen.getByLabelText(/address/i), '1234')
+
+        const submitButton = screen.getByRole('button', { name: /add customer/i })
+        await userEvent.click(submitButton)
+
+        expect(handleSubmit).not.toHaveBeenCalled()
+        expect(screen.getByText('Address must be at least 5 characters.')).toBeInTheDocument()
     })
 
     it('calls onCancel when the cancel button is clicked', async () => {

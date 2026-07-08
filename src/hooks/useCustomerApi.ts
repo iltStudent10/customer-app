@@ -166,6 +166,38 @@ export function useCustomerApi() {
     [refreshCustomers],
   )
 
+  const isEmailInUse = useCallback(
+    async (email: string, excludeCustomerId?: number) => {
+      const normalizedEmail = email.trim().toLowerCase()
+      if (!normalizedEmail) {
+        return false
+      }
+
+      try {
+        const response = await fetch(
+          `/api/customers?email=${encodeURIComponent(normalizedEmail)}`,
+        )
+
+        if (!response.ok) {
+          throw new Error('Failed to check duplicate email.')
+        }
+
+        const data = (await response.json()) as Customer[]
+        return data.some((customer) => {
+          const customerEmail = customer.email.trim().toLowerCase()
+          return (
+            customerEmail === normalizedEmail &&
+            (excludeCustomerId === undefined || customer.id !== excludeCustomerId)
+          )
+        })
+      } catch {
+        setError('Unable to validate email right now.')
+        return false
+      }
+    },
+    [],
+  )
+
   const updateCustomer = useCallback(
     async (customer: Customer) => {
       setIsLoading(true)
@@ -228,6 +260,7 @@ export function useCustomerApi() {
     fetchCustomers,
     getCustomerById,
     addCustomer,
+    isEmailInUse,
     updateCustomer,
     deleteCustomer,
   }

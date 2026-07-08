@@ -31,6 +31,8 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     const nextErrors: Partial<Record<keyof CustomerFormData, string>> = {}
     const trimmedName = values.name.trim()
     const trimmedEmail = values.email.trim()
+    const trimmedAddress = values.address.trim()
+    const trimmedCity = values.city.trim()
     const trimmedState = values.state.trim()
     const trimmedZip = values.zip.trim()
 
@@ -38,12 +40,18 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       nextErrors.name = 'Name is required.'
     } else if (trimmedName.length < 2) {
       nextErrors.name = 'Name must be at least 2 characters.'
+    } else if (trimmedName.length > 100) {
+      nextErrors.name = 'Name must be 100 characters or fewer.'
+    } else if (!/^[a-zA-Z][a-zA-Z' -]*$/.test(trimmedName)) {
+      nextErrors.name = 'Name can only contain letters, spaces, apostrophes, and hyphens.'
     }
 
     if (!trimmedEmail) {
       nextErrors.email = 'Email is required.'
     } else if (trimmedEmail.length < 2) {
       nextErrors.email = 'Email must be at least 2 characters.'
+    } else if (trimmedEmail.length > 254) {
+      nextErrors.email = 'Email must be 254 characters or fewer.'
     } else if (!trimmedEmail.includes('@')) {
       nextErrors.email = 'Email must include @.'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
@@ -60,6 +68,24 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
     if (trimmedZip && trimmedZip.length !== 5) {
       nextErrors.zip = 'ZIP must be exactly 5 digits.'
+    }
+
+    if (trimmedAddress) {
+      if (trimmedAddress.length < 5) {
+        nextErrors.address = 'Address must be at least 5 characters.'
+      } else if (trimmedAddress.length > 120) {
+        nextErrors.address = 'Address must be 120 characters or fewer.'
+      }
+    }
+
+    if (trimmedCity) {
+      if (trimmedCity.length < 2) {
+        nextErrors.city = 'City must be at least 2 characters.'
+      } else if (trimmedCity.length > 100) {
+        nextErrors.city = 'City must be 100 characters or fewer.'
+      } else if (!/^[a-zA-Z][a-zA-Z' -]*$/.test(trimmedCity)) {
+        nextErrors.city = 'City can only contain letters, spaces, apostrophes, and hyphens.'
+      }
     }
 
     if (trimmedState && trimmedState.length !== 2) {
@@ -92,7 +118,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
       nextValue = value.replace(/\D/g, '').slice(0, 5)
     }
     if (field === 'state' && typeof value === 'string') {
-      nextValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 2)
+      nextValue = value.replace(/[^a-zA-Z]/g, '').slice(0, 2).toUpperCase()
     }
 
     setFormData((currentFormData) => ({
@@ -139,13 +165,25 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const validationErrors = validate(formData)
+    const normalizedFormData: CustomerFormData = {
+      ...formData,
+      name: formData.name.trim(),
+      email: formData.email.trim().toLowerCase(),
+      address: formData.address.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim().toUpperCase(),
+      zip: formData.zip.trim(),
+    }
+
+    const validationErrors = validate(normalizedFormData)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
       return
     }
 
-    await onSubmit(formData)
+    setFormData(normalizedFormData)
+
+    await onSubmit(normalizedFormData)
   }
 
   return (
@@ -216,7 +254,15 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             type="text"
             value={formData.address}
             onChange={(event) => handleFieldChange('address', event.target.value)}
+            className={errors.address ? 'input-error' : ''}
+            aria-invalid={Boolean(errors.address)}
+            aria-describedby={errors.address ? 'address-error' : undefined}
           />
+          {errors.address && (
+            <p id="address-error" className="field-error" role="alert">
+              {errors.address}
+            </p>
+          )}
         </div>
 
         <div className="form-field">
@@ -226,7 +272,15 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             type="text"
             value={formData.city}
             onChange={(event) => handleFieldChange('city', event.target.value)}
+            className={errors.city ? 'input-error' : ''}
+            aria-invalid={Boolean(errors.city)}
+            aria-describedby={errors.city ? 'city-error' : undefined}
           />
+          {errors.city && (
+            <p id="city-error" className="field-error" role="alert">
+              {errors.city}
+            </p>
+          )}
         </div>
 
         <div className="form-field">

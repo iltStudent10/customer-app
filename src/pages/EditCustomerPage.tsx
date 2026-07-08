@@ -7,10 +7,11 @@ import { useCustomerApi } from '../hooks/useCustomerApi'
 export function EditCustomerPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { customers, updateCustomer, getCustomerById, error } = useCustomerApi()
+  const { customers, updateCustomer, getCustomerById, isEmailInUse, error } = useCustomerApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCustomerLoading, setIsCustomerLoading] = useState(true)
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
 
   const routeCustomerId = Number(id)
 
@@ -91,6 +92,14 @@ export function EditCustomerPage() {
   }
 
   const handleSubmit = async (formData: CustomerFormData) => {
+    setValidationError(null)
+
+    const emailAlreadyExists = await isEmailInUse(formData.email, customer.id)
+    if (emailAlreadyExists) {
+      setValidationError('A customer with this email already exists.')
+      return
+    }
+
     setIsSubmitting(true)
     const wasUpdated = await updateCustomer({ id: customer.id, ...formData }).finally(
       () => {
@@ -108,6 +117,7 @@ export function EditCustomerPage() {
       <h2 className="page-title">Edit Customer</h2>
       <p className="page-subtitle">Customer ID: {customer.id}</p>
       {isSubmitting && <div className="placeholder-card">Updating customer...</div>}
+      {validationError && <div className="placeholder-card">{validationError}</div>}
       {error && <div className="placeholder-card">{error}</div>}
       <CustomerForm
         initialData={initialData}
