@@ -12,6 +12,7 @@ interface FetchCustomersOptions {
 
 interface FetchCustomersResult {
   customers: Customer[]
+  matchingCustomers: number
   totalCustomers: number
 }
 
@@ -20,13 +21,34 @@ export function useCustomerApi() {
   const [isLoading, setIsLoading] = useState(customers.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [totalCustomers, setTotalCustomers] = useState(customers.length)
+  const [matchingCustomers, setMatchingCustomers] = useState(customers.length)
   const lastQueryRef = useRef<FetchCustomersOptions>({ page: 1, perPage: 10 })
+
+  const requestTotalCustomersCount = useCallback(async (): Promise<number> => {
+    const params = new URLSearchParams()
+    params.set('_page', '1')
+    params.set('_limit', '1')
+
+    const response = await fetch(`/api/customers?${params.toString()}`)
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch total customer count.')
+    }
+
+    const totalCountHeader = Number(response.headers.get('X-Total-Count'))
+    if (Number.isFinite(totalCountHeader) && totalCountHeader >= 0) {
+      return totalCountHeader
+    }
+
+    const data = (await response.json()) as Customer[]
+    return data.length
+  }, [])
 
   const requestCustomers = useCallback(
     async (options: FetchCustomersOptions): Promise<FetchCustomersResult> => {
       const params = new URLSearchParams()
       params.set('_page', String(options.page ?? 1))
-      params.set('_per_page', String(options.perPage ?? 10))
+      params.set('_limit', String(options.perPage ?? 10))
 
       const normalizedSearch = options.searchTerm?.trim()
       if (normalizedSearch) {
@@ -45,23 +67,30 @@ export function useCustomerApi() {
       }
 
       const data = (await response.json()) as Customer[]
-      const totalCountHeader = Number(response.headers.get('X-Total-Count'))
-      const resolvedTotalCount =
-        Number.isFinite(totalCountHeader) && totalCountHeader >= 0
-          ? totalCountHeader
+      const matchingCountHeader = Number(response.headers.get('X-Total-Count'))
+      const resolvedMatchingCount =
+        Number.isFinite(matchingCountHeader) && matchingCountHeader >= 0
+          ? matchingCountHeader
           : data.length
+
+      const hasSearchTerm = Boolean(normalizedSearch)
+      const resolvedTotalCount = hasSearchTerm
+        ? await requestTotalCustomersCount()
+        : resolvedMatchingCount
 
       return {
         customers: data,
+        matchingCustomers: resolvedMatchingCount,
         totalCustomers: resolvedTotalCount,
       }
     },
-    [],
+    [requestTotalCustomersCount],
   )
 
   const refreshCustomers = useCallback(async () => {
     const data = await requestCustomers(lastQueryRef.current)
     setCustomers(data.customers)
+    setMatchingCustomers(data.matchingCustomers)
     setTotalCustomers(data.totalCustomers)
   }, [requestCustomers, setCustomers])
 
@@ -254,6 +283,7 @@ export function useCustomerApi() {
 
   return {
     customers,
+    matchingCustomers,
     totalCustomers,
     isLoading,
     error,

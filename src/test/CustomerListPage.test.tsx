@@ -32,6 +32,7 @@ describe('CustomerListPage', () => {
           zip: '62704',
         },
       ],
+      matchingCustomers: 30,
       totalCustomers: 30,
       isLoading: false,
       error: null,
@@ -56,6 +57,7 @@ describe('CustomerListPage', () => {
     })
 
     expect(screen.getByText('Page 1 of 3')).toBeInTheDocument()
+    expect(screen.getByText('Showing 1 of 30 customers')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled()
 
@@ -91,6 +93,7 @@ describe('CustomerListPage', () => {
   it('applies search and rows-per-page changes', async () => {
     vi.mocked(useCustomerApi).mockReturnValue({
       customers: [],
+      matchingCustomers: 0,
       totalCustomers: 0,
       isLoading: false,
       error: null,
@@ -146,6 +149,7 @@ describe('CustomerListPage', () => {
           zip: '62704',
         },
       ],
+      matchingCustomers: 1,
       totalCustomers: 1,
       isLoading: false,
       error: null,
@@ -164,5 +168,37 @@ describe('CustomerListPage', () => {
     await waitFor(() => {
       expect(deleteCustomer).toHaveBeenCalledWith(1)
     })
+  })
+
+  it('shows filtered vs total customer counts', async () => {
+    vi.mocked(useCustomerApi).mockReturnValue({
+      customers: [
+        {
+          id: 1,
+          name: 'Maria Garcia',
+          email: 'maria@example.com',
+          phone: '555-0101',
+          address: '742 Evergreen Terrace',
+          city: 'Springfield',
+          state: 'IL',
+          zip: '62704',
+        },
+      ],
+      matchingCustomers: 1,
+      totalCustomers: 12,
+      isLoading: false,
+      error: null,
+      fetchCustomers,
+      deleteCustomer,
+    } as unknown as ReturnType<typeof useCustomerApi>)
+
+    render(
+      <MemoryRouter>
+        <CustomerListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Showing 1 of 12 customers')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
   })
 })

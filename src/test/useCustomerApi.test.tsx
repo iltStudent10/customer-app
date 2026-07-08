@@ -43,6 +43,11 @@ describe('useCustomerApi', () => {
         ],
         headers: { get: () => '21' },
       } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+        headers: { get: () => '21' },
+      } as unknown as Response)
 
     const { result } = renderHook(() => useCustomerApi(), { wrapper })
 
@@ -60,12 +65,67 @@ describe('useCustomerApi', () => {
       })
     })
 
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      '/api/customers?_page=2&_per_page=10&q=maria&_sort=name&_order=asc',
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/customers?_page=2&_limit=10&q=maria&_sort=name&_order=asc',
     )
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/customers?_page=1&_limit=1')
     expect(result.current.customers).toHaveLength(1)
+    expect(result.current.matchingCustomers).toBe(21)
     expect(result.current.totalCustomers).toBe(21)
     expect(result.current.customers[0].name).toBe('Maria Garcia')
+  })
+
+  it('tracks matching count separately from overall total when filtered', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch)
+
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+        headers: { get: () => '12' },
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{
+          id: 1,
+          name: 'Maria Garcia',
+          email: 'maria@example.com',
+          phone: '555-0101',
+          address: '742 Evergreen Terrace',
+          city: 'Springfield',
+          state: 'IL',
+          zip: '62704',
+        }],
+        headers: { get: () => '1' },
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [],
+        headers: { get: () => '12' },
+      } as unknown as Response)
+
+    const { result } = renderHook(() => useCustomerApi(), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    await act(async () => {
+      await result.current.fetchCustomers({
+        page: 1,
+        perPage: 10,
+        searchTerm: 'maria',
+      })
+    })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/customers?_page=1&_limit=10&q=maria',
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/customers?_page=1&_limit=1')
+    expect(result.current.matchingCustomers).toBe(1)
+    expect(result.current.totalCustomers).toBe(12)
   })
 
   it('adds a customer and refreshes the list', async () => {

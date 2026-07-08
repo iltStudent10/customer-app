@@ -34,13 +34,20 @@ function getInitialSortState(): CustomerSortState {
 }
 
 export function CustomerListPage() {
-  const { customers, totalCustomers, isLoading, error, fetchCustomers, deleteCustomer } =
-    useCustomerApi()
+  const {
+    customers,
+    matchingCustomers,
+    totalCustomers,
+    isLoading,
+    error,
+    fetchCustomers,
+    deleteCustomer,
+  } = useCustomerApi()
   const [searchTerm, setSearchTerm] = useState('')
   const [sort, setSort] = useState<CustomerSortState>(getInitialSortState)
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const totalPages = Math.max(1, Math.ceil(totalCustomers / rowsPerPage))
+  const totalPages = Math.max(1, Math.ceil(matchingCustomers / rowsPerPage))
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
 
   useEffect(() => {
@@ -56,13 +63,6 @@ export function CustomerListPage() {
       sortDirection: sort.direction,
     })
   }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers, totalPages])
-
-  const firstResultIndex =
-    totalCustomers === 0 ? 0 : (safeCurrentPage - 1) * rowsPerPage + 1
-  const lastResultIndex = Math.min(
-    (safeCurrentPage - 1) * rowsPerPage + customers.length,
-    totalCustomers,
-  )
 
   const handleSort = (field: SortableCustomerField) => {
     setSort((currentSort) => {
@@ -138,7 +138,7 @@ export function CustomerListPage() {
         </div>
         <div className="results-summary-row">
           <p className="results-count">
-            Showing {firstResultIndex}-{lastResultIndex} of {totalCustomers} customers
+            Showing {customers.length} of {totalCustomers} customers
           </p>
           <label htmlFor="rows-per-page" className="rows-per-page-label">
             Rows per page
