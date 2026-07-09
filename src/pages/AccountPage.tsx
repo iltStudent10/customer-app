@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import accountHero from '../assets/account-hero.svg'
+import profileAvatar from '../assets/profile-avatar.svg'
 import { useAuth } from '../hooks/useAuth'
 
 export function AccountPage() {
@@ -57,17 +59,31 @@ export function AccountPage() {
     <section>
       <h2 className="page-title">Account</h2>
       <p className="page-subtitle">Manage your sign-in session and credentials.</p>
+      <div className="account-hero-card">
+        <img
+          src={accountHero}
+          alt="Decorative account dashboard illustration"
+          className="account-hero-image"
+        />
+      </div>
       {error && <div className="placeholder-card auth-error-card">{error}</div>}
       {success && <div className="placeholder-card auth-success-card">{success}</div>}
-      <div className="placeholder-card">
-        <p className="page-subtitle">Signed in as {user?.username ?? 'Unknown user'}</p>
-        <div className="form-actions">
-          <button type="button" className="secondary-button" onClick={() => navigate('/')}>
-            Back to Customers
-          </button>
-          <button type="button" className="primary-button" onClick={handleLogout}>
-            Logout
-          </button>
+      <div className="placeholder-card account-summary-card">
+        <img
+          src={profileAvatar}
+          alt="Profile avatar illustration"
+          className="account-avatar-image"
+        />
+        <div className="account-summary-content">
+          <p className="page-subtitle">Signed in as {user?.username ?? 'Unknown user'}</p>
+          <div className="form-actions">
+            <button type="button" className="secondary-button" onClick={() => navigate('/')}>
+              Back to Customers
+            </button>
+            <button type="button" className="primary-button" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 
