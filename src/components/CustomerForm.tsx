@@ -127,17 +127,6 @@ export function CustomerForm({
     field: keyof CustomerFormData,
     value: CustomerFormData[keyof CustomerFormData],
   ) => {
-    const hasInvalidPhoneCharacters =
-      field === 'phone' && typeof value === 'string' && /\D/.test(value)
-    const hasInvalidZipCharacters =
-      field === 'zip' && typeof value === 'string' && /\D/.test(value)
-    const hasZipLengthOverflow =
-      field === 'zip' && typeof value === 'string' && value.replace(/\D/g, '').length > 5
-    const hasInvalidStateCharacters =
-      field === 'state' && typeof value === 'string' && /[^a-zA-Z]/.test(value)
-    const hasStateLengthOverflow =
-      field === 'state' && typeof value === 'string' && value.replace(/[^a-zA-Z]/g, '').length > 2
-
     let nextValue = value
     if (field === 'phone' && typeof value === 'string') {
       nextValue = value.replace(/\D/g, '')
@@ -155,36 +144,12 @@ export function CustomerForm({
     }))
 
     setErrors((currentErrors) => {
+      if (!currentErrors[field]) {
+        return currentErrors
+      }
+
       const nextErrors = { ...currentErrors }
-
-      if (hasInvalidPhoneCharacters) {
-        nextErrors.phone = 'Phone can only contain numbers.'
-        return nextErrors
-      }
-
-      if (hasInvalidZipCharacters) {
-        nextErrors.zip = 'ZIP can only contain numbers.'
-        return nextErrors
-      }
-
-      if (hasZipLengthOverflow) {
-        nextErrors.zip = 'ZIP can only be 5 digits.'
-        return nextErrors
-      }
-
-      if (hasInvalidStateCharacters) {
-        nextErrors.state = 'State can only contain letters.'
-        return nextErrors
-      }
-
-      if (hasStateLengthOverflow) {
-        nextErrors.state = 'State can only be 2 letters.'
-        return nextErrors
-      }
-
-      if (nextErrors[field]) {
-        delete nextErrors[field]
-      }
+      delete nextErrors[field]
 
       return nextErrors
     })

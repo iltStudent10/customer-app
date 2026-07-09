@@ -65,6 +65,7 @@ describe('EditCustomerPage', () => {
     return render(
       <MemoryRouter initialEntries={[path]}>
         <Routes>
+          <Route path="/" element={<div>Customers Home</div>} />
           <Route path="/edit/:id" element={<EditCustomerPage />} />
         </Routes>
       </MemoryRouter>,

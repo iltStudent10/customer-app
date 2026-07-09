@@ -180,7 +180,7 @@ describe('CustomerForm', () => {
         expect(phoneInput).toHaveValue('555010')
     })
 
-    it('shows a clear error when non-numeric phone characters are entered', async () => {
+    it('does not show a phone character error while non-numeric characters are auto-removed', async () => {
         render(
             <MemoryRouter>
                 <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
@@ -189,21 +189,7 @@ describe('CustomerForm', () => {
 
         const phoneInput = screen.getByLabelText(/phone/i)
         await userEvent.type(phoneInput, 'abc')
-
-        expect(phoneInput).toHaveValue('')
-        expect(screen.getByText('Phone can only contain numbers.')).toBeInTheDocument()
-    })
-
-    it('clears phone non-numeric error after entering valid digits', async () => {
-        render(
-            <MemoryRouter>
-                <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
-            </MemoryRouter>,
-        )
-
-        const phoneInput = screen.getByLabelText(/phone/i)
-        await userEvent.type(phoneInput, 'abc')
-        expect(screen.getByText('Phone can only contain numbers.')).toBeInTheDocument()
+        expect(screen.queryByText('Phone can only contain numbers.')).not.toBeInTheDocument()
 
         await userEvent.type(phoneInput, '5550101')
 
@@ -224,7 +210,7 @@ describe('CustomerForm', () => {
         expect(zipInput).toHaveValue('12345')
     })
 
-    it('shows a clear error when non-numeric ZIP characters are entered', async () => {
+    it('does not show a ZIP character error while non-numeric characters are auto-removed', async () => {
         render(
             <MemoryRouter>
                 <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
@@ -235,7 +221,7 @@ describe('CustomerForm', () => {
         await userEvent.type(zipInput, 'abc')
 
         expect(zipInput).toHaveValue('')
-        expect(screen.getByText('ZIP can only contain numbers.')).toBeInTheDocument()
+        expect(screen.queryByText('ZIP can only contain numbers.')).not.toBeInTheDocument()
     })
 
     it('shows an error when ZIP is not exactly 5 digits on submit', async () => {
@@ -300,7 +286,7 @@ describe('CustomerForm', () => {
         expect(stateInput).toHaveValue('CA')
     })
 
-    it('shows a clear error when non-letter state characters are entered', async () => {
+    it('does not show a state character error while non-letter characters are auto-removed', async () => {
         render(
             <MemoryRouter>
                 <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
@@ -311,10 +297,10 @@ describe('CustomerForm', () => {
         await userEvent.type(stateInput, '1!')
 
         expect(stateInput).toHaveValue('')
-        expect(screen.getByText('State can only contain letters.')).toBeInTheDocument()
+        expect(screen.queryByText('State can only contain letters.')).not.toBeInTheDocument()
     })
 
-    it('shows a clear error when more than 2 state letters are entered', async () => {
+    it('does not show a state length error while extra letters are auto-trimmed', async () => {
         render(
             <MemoryRouter>
                 <CustomerForm onSubmit={vi.fn()} onCancel={vi.fn()} />
@@ -325,7 +311,7 @@ describe('CustomerForm', () => {
         await userEvent.type(stateInput, 'CAL')
 
         expect(stateInput).toHaveValue('CA')
-        expect(screen.getByText('State can only be 2 letters.')).toBeInTheDocument()
+        expect(screen.queryByText('State can only be 2 letters.')).not.toBeInTheDocument()
     })
 
     it('shows an error when state is not exactly 2 letters on submit', async () => {
