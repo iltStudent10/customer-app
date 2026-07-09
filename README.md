@@ -8,6 +8,8 @@ A React + TypeScript application for managing customer records with create, read
 - Search by name, email, or city
 - Sort by name, email, city, and state
 - Add and edit customer forms with client-side validation
+- Account creation and login with session persisted in local storage (passwords require 8+ chars, uppercase, lowercase, number, and special character)
+- Protected edit access (users must be logged in to edit customers)
 - Duplicate email validation before create/update
 - Delete confirmation dialog
 - Light/Dark mode toggle persisted in local storage
@@ -24,9 +26,9 @@ A React + TypeScript application for managing customer records with create, read
 ## Project Structure
 
 - `src/components` – UI components (`Header`, `Layout`, `CustomerList`, `CustomerForm`, `ErrorBoundary`)
-- `src/pages` – Route-level pages (`CustomerListPage`, `AddCustomerPage`, `EditCustomerPage`)
-- `src/hooks` – Data and context hooks (`useCustomerApi`, `useCustomerContext`)
-- `src/context` – Customer context provider/reducer
+- `src/pages` – Route-level pages (`CustomerListPage`, `AddCustomerPage`, `EditCustomerPage`, `LoginPage`)
+- `src/hooks` – Data and context hooks (`useCustomerApi`, `useCustomerContext`, `useAuth`)
+- `src/context` – Context providers (`CustomerProvider`, `AuthProvider`)
 - `src/types` – Shared TypeScript types
 - `db.json` – Local API database file
 - `db.seed.json` – Seed data for resetting the database
@@ -74,7 +76,10 @@ Then open the URL shown by Vite (typically `http://localhost:5173`).
 
 - `/` – Customer list
 - `/add` – Add customer
+- `/login` – Login page
 - `/edit/:id` – Edit customer
+
+Unauthenticated users are redirected to `/login` when attempting to access `/edit/:id`.
 
 `BrowserRouter` uses Vite `BASE_URL` as basename, so the app works locally and on GitHub Pages under `/customer-app/`.
 
