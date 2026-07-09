@@ -104,7 +104,7 @@ export function CustomerListPage() {
   }
 
   return (
-    <section>
+    <section aria-busy={isLoading}>
       <h2 className="page-title">Customers</h2>
       <div className="search-row">
         <label htmlFor="customer-search" className="search-label">
@@ -158,15 +158,23 @@ export function CustomerListPage() {
           </label>
         </div>
       </div>
-      {isLoading && <div className="placeholder-card">Loading customers...</div>}
-      {error && <div className="placeholder-card">{error}</div>}
-      <CustomerList
-        customers={customers}
-        onDelete={handleDeleteCustomer}
-        sort={sort}
-        onSort={handleSort}
-      />
-      <div className="pagination-row" aria-label="Pagination">
+      {isLoading ? (
+        <div className="placeholder-card" role="status" aria-live="polite">
+          Loading customers...
+        </div>
+      ) : error ? (
+        <div className="placeholder-card" role="alert" aria-live="assertive">
+          {error}
+        </div>
+      ) : (
+        <CustomerList
+          customers={customers}
+          onDelete={handleDeleteCustomer}
+          sort={sort}
+          onSort={handleSort}
+        />
+      )}
+      <div className="pagination-row" aria-label="Pagination" role="navigation">
         <button
           type="button"
           className="secondary-button"
@@ -175,7 +183,9 @@ export function CustomerListPage() {
         >
           Previous
         </button>
-        <p className="page-indicator">Page {safeCurrentPage} of {totalPages}</p>
+        <p className="page-indicator" aria-live="polite">
+          Page {safeCurrentPage} of {totalPages}
+        </p>
         <button
           type="button"
           className="secondary-button"

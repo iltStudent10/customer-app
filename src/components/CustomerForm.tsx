@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import type { CustomerFormData } from '../types/customer'
 
 interface CustomerFormProps {
@@ -17,6 +17,16 @@ const emptyFormData: CustomerFormData = {
   zip: '',
 }
 
+const fieldLabels: Record<keyof CustomerFormData, string> = {
+  name: 'Name',
+  email: 'Email',
+  phone: 'Phone',
+  address: 'Address',
+  city: 'City',
+  state: 'State',
+  zip: 'ZIP',
+}
+
 export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormProps) {
   const [formData, setFormData] = useState<CustomerFormData>(
     initialData ?? emptyFormData,
@@ -24,6 +34,8 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
   const [errors, setErrors] = useState<Partial<Record<keyof CustomerFormData, string>>>(
     {},
   )
+
+  const errorEntries = useMemo(() => Object.entries(errors), [errors])
 
   const isEditMode = Boolean(initialData)
 
@@ -178,6 +190,23 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
     const validationErrors = validate(normalizedFormData)
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+
+      const fieldOrder: (keyof CustomerFormData)[] = [
+        'name',
+        'email',
+        'phone',
+        'address',
+        'city',
+        'state',
+        'zip',
+      ]
+      const firstInvalidField = fieldOrder.find((field) => validationErrors[field])
+
+      if (firstInvalidField) {
+        const invalidFieldElement = document.getElementById(firstInvalidField)
+        invalidFieldElement?.focus()
+      }
+
       return
     }
 
@@ -188,12 +217,29 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
 
   return (
     <form className="customer-form" onSubmit={handleSubmit} noValidate>
+      {errorEntries.length > 0 && (
+        <div
+          className="form-error-summary"
+          role="alert"
+          aria-live="assertive"
+        >
+          <p>Please correct the following fields:</p>
+          <ul>
+            {errorEntries.map(([field]) => (
+              <li key={field}>
+                <strong>{fieldLabels[field as keyof CustomerFormData]}</strong> needs attention.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="form-grid">
         <div className="form-field">
           <label htmlFor="name">Name</label>
           <input
             id="name"
             type="text"
+            autoComplete="name"
             value={formData.name}
             onChange={(event) => handleFieldChange('name', event.target.value)}
             className={errors.name ? 'input-error' : ''}
@@ -213,6 +259,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="email"
             type="email"
+            autoComplete="email"
             value={formData.email}
             onChange={(event) => handleFieldChange('email', event.target.value)}
             className={errors.email ? 'input-error' : ''}
@@ -233,6 +280,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             id="phone"
             type="text"
             inputMode="numeric"
+            autoComplete="tel"
             value={formData.phone}
             onChange={(event) => handleFieldChange('phone', event.target.value)}
             className={errors.phone ? 'input-error' : ''}
@@ -252,6 +300,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="address"
             type="text"
+            autoComplete="street-address"
             value={formData.address}
             onChange={(event) => handleFieldChange('address', event.target.value)}
             className={errors.address ? 'input-error' : ''}
@@ -270,6 +319,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
           <input
             id="city"
             type="text"
+            autoComplete="address-level2"
             value={formData.city}
             onChange={(event) => handleFieldChange('city', event.target.value)}
             className={errors.city ? 'input-error' : ''}
@@ -289,6 +339,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             id="state"
             type="text"
             inputMode="text"
+            autoComplete="address-level1"
             value={formData.state}
             onChange={(event) => handleFieldChange('state', event.target.value)}
             className={errors.state ? 'input-error' : ''}
@@ -308,6 +359,7 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
             id="zip"
             type="text"
             inputMode="numeric"
+            autoComplete="postal-code"
             maxLength={5}
             value={formData.zip}
             onChange={(event) => handleFieldChange('zip', event.target.value)}

@@ -201,4 +201,45 @@ describe('CustomerListPage', () => {
     expect(screen.getByText('Showing 1 of 12 customers')).toBeInTheDocument()
     expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
   })
+
+  it('shows accessible loading status and hides empty-state message while loading', () => {
+    vi.mocked(useCustomerApi).mockReturnValue({
+      customers: [],
+      matchingCustomers: 0,
+      totalCustomers: 0,
+      isLoading: true,
+      error: null,
+      fetchCustomers,
+      deleteCustomer,
+    } as unknown as ReturnType<typeof useCustomerApi>)
+
+    render(
+      <MemoryRouter>
+        <CustomerListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading customers...')
+    expect(screen.queryByText('No customers found.')).not.toBeInTheDocument()
+  })
+
+  it('shows API errors in an alert region', () => {
+    vi.mocked(useCustomerApi).mockReturnValue({
+      customers: [],
+      matchingCustomers: 0,
+      totalCustomers: 0,
+      isLoading: false,
+      error: 'Failed to load customers.',
+      fetchCustomers,
+      deleteCustomer,
+    } as unknown as ReturnType<typeof useCustomerApi>)
+
+    render(
+      <MemoryRouter>
+        <CustomerListPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Failed to load customers.')
+  })
 })

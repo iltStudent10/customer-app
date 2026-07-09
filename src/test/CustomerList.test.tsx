@@ -112,4 +112,38 @@ describe('CustomerList', () => {
         const editLink = screen.getByText('Edit')
         expect(editLink).toHaveAttribute('href', '/edit/1')
     })
+
+    it('exposes current sort state through aria-sort', () => {
+        const customers: Customer[] = [
+            {
+                id: 1,
+                name: 'Maria Garcia',
+                email: 'maria.garcia@example.com',
+                phone: '555-0101',
+                address: '742 Evergreen Terrace',
+                city: 'Springfield',
+                state: 'IL',
+                zip: '62704',
+            },
+        ]
+
+        render(
+            <MemoryRouter>
+                <CustomerList
+                    customers={customers}
+                    onDelete={vi.fn()}
+                    sort={{ field: 'name', direction: 'asc' }}
+                />
+            </MemoryRouter>,
+        )
+
+        expect(screen.getByRole('columnheader', { name: /name/i })).toHaveAttribute(
+            'aria-sort',
+            'ascending',
+        )
+        expect(screen.getByRole('columnheader', { name: /email/i })).toHaveAttribute(
+            'aria-sort',
+            'none',
+        )
+    })
 })

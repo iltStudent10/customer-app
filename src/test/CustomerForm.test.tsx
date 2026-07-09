@@ -21,6 +21,13 @@ describe('CustomerForm', () => {
         expect(screen.getByText('Name is required.')).toBeInTheDocument()
         expect(screen.getByText('Email is required.')).toBeInTheDocument()
         expect(screen.getByText('Phone is required.')).toBeInTheDocument()
+        const summaryHeading = screen.getByText('Please correct the following fields:')
+        expect(summaryHeading).toBeInTheDocument()
+        const summary = summaryHeading.closest('.form-error-summary')
+        expect(summary).toHaveTextContent('Name needs attention.')
+        expect(summary).toHaveTextContent('Email needs attention.')
+        expect(summary).toHaveTextContent('Phone needs attention.')
+        expect(screen.getByLabelText(/name/i)).toHaveFocus()
     })
 
     it('calls onSubmit with form data when the form is valid', async () => {
