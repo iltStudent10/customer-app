@@ -17,6 +17,8 @@ interface AuthUser {
 
 interface AuthAccount {
   username: string
+  email?: string
+  phone?: string
   passwordHash: string
   passwordSalt: string
   passwordVersion: number
@@ -24,6 +26,8 @@ interface AuthAccount {
 
 interface LegacyAuthAccount {
   username: string
+  email?: string
+  phone?: string
   password: string
 }
 
@@ -37,7 +41,7 @@ interface AuthResult {
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<AuthResult>
+  login: (identifier: string, password: string) => Promise<AuthResult>
   register: (username: string, password: string) => Promise<AuthResult>
   updateUsername: (newUsername: string) => Promise<AuthResult>
   updatePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>
@@ -46,6 +50,21 @@ interface AuthContextValue {
 
 function normalizeUsername(username: string) {
   return username.trim().toLowerCase()
+}
+
+function normalizePhone(phone: string) {
+  const trimmedPhone = phone.trim()
+  if (!trimmedPhone) {
+    return ''
+  }
+
+  const hasLeadingPlus = trimmedPhone.startsWith('+')
+  const digitsOnlyPhone = trimmedPhone.replace(/\D/g, '')
+  if (!digitsOnlyPhone) {
+    return ''
+  }
+
+  return hasLeadingPlus ? `+${digitsOnlyPhone}` : digitsOnlyPhone
 }
 
 function validatePassword(password: string): string | null {
@@ -189,6 +208,23 @@ async function verifyPassword(
   return account.password === candidatePassword
 }
 
+function getNormalizedAccountIdentifiers(account: StoredAuthAccount): string[] {
+  const normalizedIdentifiers = [normalizeUsername(account.username)]
+
+  if ('email' in account && typeof account.email === 'string' && account.email.trim()) {
+    normalizedIdentifiers.push(normalizeUsername(account.email))
+  }
+
+  if ('phone' in account && typeof account.phone === 'string' && account.phone.trim()) {
+    const normalizedPhone = normalizePhone(account.phone)
+    if (normalizedPhone) {
+      normalizedIdentifiers.push(normalizedPhone)
+    }
+  }
+
+  return normalizedIdentifiers
+}
+
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -203,27 +239,36 @@ export function AuthProvider({ children }: PropsWithChildren) {
     )
   }, [])
 
-  const login = useCallback(async (username: string, password: string): Promise<AuthResult> => {
-    const normalizedUsername = username.trim()
+  const login = useCallback(async (identifier: string, password: string): Promise<AuthResult> => {
+    const normalizedIdentifier = identifier.trim()
+    const normalizedTextIdentifier = normalizeUsername(identifier)
+    const normalizedPhoneIdentifier = normalizePhone(identifier)
     const normalizedPassword = password.trim()
 
-    if (!normalizedUsername || !normalizedPassword) {
+    if (!normalizedIdentifier || !normalizedPassword) {
       return {
         success: false,
-        error: 'Enter both username and password.',
+        error: 'Enter both email or phone and password.',
       }
     }
 
     const matchingAccountIndex = accounts.findIndex(
-      (account) =>
-        normalizeUsername(account.username) === normalizeUsername(normalizedUsername) &&
-        account.username.trim(),
+      (account) => {
+        const accountIdentifiers = getNormalizedAccountIdentifiers(account)
+
+        return (
+          accountIdentifiers.includes(normalizedTextIdentifier) ||
+          (normalizedPhoneIdentifier
+            ? accountIdentifiers.includes(normalizedPhoneIdentifier)
+            : false)
+        )
+      },
     )
 
     if (matchingAccountIndex === -1) {
       return {
         success: false,
-        error: 'Invalid username or password.',
+        error: 'Invalid email/phone or password.',
       }
     }
 
@@ -233,7 +278,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     if (!passwordMatches) {
       return {
         success: false,
-        error: 'Invalid username or password.',
+        error: 'Invalid email/phone or password.',
       }
     }
 
@@ -261,7 +306,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (!normalizedUsername || !normalizedPassword) {
         return {
           success: false,
-          error: 'Enter both username and password to create an account.',
+          error: 'Enter both email or phone and password to create an account.',
         }
       }
 
@@ -282,7 +327,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (usernameAlreadyExists) {
         return {
           success: false,
-          error: 'That username is already in use. Choose a different one.',
+          error: 'That email or phone is already in use. Choose a different one.',
         }
       }
 

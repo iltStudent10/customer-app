@@ -60,7 +60,7 @@ describe('App routing', () => {
       expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument()
     })
 
-    expect(screen.getByLabelText('Username')).toBeInTheDocument()
+    expect(screen.getByLabelText('Email or Phone')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
   })

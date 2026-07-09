@@ -41,15 +41,15 @@ describe('AccountPage', () => {
     )
   }
 
-  it('updates username and persists the new session user', async () => {
+  it('updates email or phone and persists the new session user', async () => {
     renderPage()
 
-    await userEvent.clear(screen.getByLabelText('New Username'))
-    await userEvent.type(screen.getByLabelText('New Username'), 'maria2')
-    await userEvent.click(screen.getByRole('button', { name: 'Update Username' }))
+    await userEvent.clear(screen.getByLabelText('New Email or Phone'))
+    await userEvent.type(screen.getByLabelText('New Email or Phone'), 'maria2')
+    await userEvent.click(screen.getByRole('button', { name: 'Update Email or Phone' }))
 
     await waitFor(() => {
-      expect(screen.getByText('Username updated successfully.')).toBeInTheDocument()
+      expect(screen.getByText('Email or phone updated successfully.')).toBeInTheDocument()
     })
 
     expect(screen.getByText('Signed in as maria2')).toBeInTheDocument()

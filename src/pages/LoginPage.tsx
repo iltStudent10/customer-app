@@ -12,7 +12,7 @@ export function LoginPage() {
   const { isAuthenticated, login, register } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [username, setUsername] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isCreateMode, setIsCreateMode] = useState(false)
@@ -38,7 +38,7 @@ export function LoginPage() {
           return
         }
 
-        const registrationResult = await register(username, password)
+        const registrationResult = await register(identifier, password)
         if (!registrationResult.success) {
           setError(registrationResult.error ?? 'Unable to create account.')
           return
@@ -48,9 +48,9 @@ export function LoginPage() {
         return
       }
 
-      const loginResult = await login(username, password)
+      const loginResult = await login(identifier, password)
       if (!loginResult.success) {
-        setError(loginResult.error ?? 'Invalid username or password.')
+        setError(loginResult.error ?? 'Invalid email/phone or password.')
         return
       }
 
@@ -73,14 +73,14 @@ export function LoginPage() {
         <fieldset disabled={isSubmitting}>
         <div className="form-grid">
           <div className="form-field">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="identifier">Email or Phone</label>
             <input
-              id="username"
-              name="username"
+              id="identifier"
+              name="identifier"
               type="text"
               autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
             />
           </div>
           <div className="form-field">

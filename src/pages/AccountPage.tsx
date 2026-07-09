@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 export function AccountPage() {
   const navigate = useNavigate()
   const { user, logout, updateUsername, updatePassword } = useAuth()
-  const [newUsername, setNewUsername] = useState(user?.username ?? '')
+  const [newIdentifier, setNewIdentifier] = useState(user?.username ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -21,20 +21,20 @@ export function AccountPage() {
     navigate('/', { replace: true })
   }
 
-  const handleUsernameSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleIdentifierSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     setSuccess(null)
     setIsUpdatingUsername(true)
 
     try {
-      const result = await updateUsername(newUsername)
+      const result = await updateUsername(newIdentifier)
       if (!result.success) {
-        setError(result.error ?? 'Unable to update username.')
+        setError(result.error ?? 'Unable to update email or phone.')
         return
       }
 
-      setSuccess('Username updated successfully.')
+      setSuccess('Email or phone updated successfully.')
     } finally {
       setIsUpdatingUsername(false)
     }
@@ -99,25 +99,25 @@ export function AccountPage() {
         </div>
       </div>
 
-      <form className="customer-form" onSubmit={handleUsernameSubmit}>
+      <form className="customer-form" onSubmit={handleIdentifierSubmit}>
         <fieldset disabled={isUpdatingUsername}>
-        <h3 className="page-subtitle">Change Username</h3>
+        <h3 className="page-subtitle">Change Email or Phone</h3>
         <div className="form-grid">
           <div className="form-field">
-            <label htmlFor="new-username">New Username</label>
+            <label htmlFor="new-identifier">New Email or Phone</label>
             <input
-              id="new-username"
-              name="new-username"
+              id="new-identifier"
+              name="new-identifier"
               type="text"
               autoComplete="username"
-              value={newUsername}
-              onChange={(event) => setNewUsername(event.target.value)}
+              value={newIdentifier}
+              onChange={(event) => setNewIdentifier(event.target.value)}
             />
           </div>
         </div>
         <div className="form-actions">
           <button type="submit" className="primary-button">
-            {isUpdatingUsername ? 'Updating Username...' : 'Update Username'}
+            {isUpdatingUsername ? 'Updating Email or Phone...' : 'Update Email or Phone'}
           </button>
         </div>
         </fieldset>

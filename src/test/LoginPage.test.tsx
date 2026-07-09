@@ -31,7 +31,7 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Username'), 'maria')
+    await userEvent.type(screen.getByLabelText('Email or Phone'), 'maria')
     await userEvent.type(screen.getByLabelText('Password'), 'Secret#123')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'Secret#123')
 
@@ -67,7 +67,7 @@ describe('LoginPage', () => {
 
     renderPage('/login')
 
-    await userEvent.type(screen.getByLabelText('Username'), 'james')
+    await userEvent.type(screen.getByLabelText('Email or Phone'), 'james')
     await userEvent.type(screen.getByLabelText('Password'), 'pw1234')
     await userEvent.click(screen.getByRole('button', { name: 'Login' }))
 
@@ -81,7 +81,7 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Username'), 'aisha')
+    await userEvent.type(screen.getByLabelText('Email or Phone'), 'aisha')
     await userEvent.type(screen.getByLabelText('Password'), 'short')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'short')
 
@@ -98,7 +98,7 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Username'), 'nina')
+    await userEvent.type(screen.getByLabelText('Email or Phone'), 'nina')
     await userEvent.type(screen.getByLabelText('Password'), 'Password1')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'Password1')
 
@@ -108,5 +108,28 @@ describe('LoginPage', () => {
       screen.getByText('Password must include at least one special character.'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Home', level: 2 })).not.toBeInTheDocument()
+  })
+
+  it('logs in with an existing account using a phone number', async () => {
+    window.localStorage.setItem(
+      AUTH_ACCOUNTS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          username: 'james',
+          phone: '+15551234567',
+          password: 'pw1234',
+        },
+      ]),
+    )
+
+    renderPage('/login')
+
+    await userEvent.type(screen.getByLabelText('Email or Phone'), '+1 (555) 123-4567')
+    await userEvent.type(screen.getByLabelText('Password'), 'pw1234')
+    await userEvent.click(screen.getByRole('button', { name: 'Login' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Home', level: 2 })).toBeInTheDocument()
+    })
   })
 })
