@@ -1,40 +1,28 @@
 # Customer Manager
 
-A React + TypeScript application for managing customer records with create, read, update, and delete operations.
+Customer Manager is a React + TypeScript app for authenticated customer management.
 
 ## Features
 
-- Customer list with server-backed pagination
-- Search by name, email, or city
-- Sort by name, email, city, and state
-- Add and edit customer forms with client-side validation
-- Account creation and login with session persisted in local storage (passwords require 8+ chars, uppercase, lowercase, number, and special character)
-- Protected edit access (users must be logged in to edit customers)
-- Account page supports changing username and password
-- Duplicate email validation before create/update
-- Delete confirmation dialog
-- Light/Dark mode toggle persisted in local storage
-- Error boundary for safer UI failure handling
+- Customer list with server-backed pagination, search, and sorting
+- Create, edit, and delete customer records
+- Login and account creation flow (email or phone sign-in)
+- Role-based access (`admin` and `user`)
+- Protected routes with redirect handling
+- Account page for username/password updates
+- Light/dark theme preference persisted in local storage
+- Error boundary and resilient API requests (timeouts/retries)
 
 ## Tech Stack
 
-- React 19 + TypeScript
-- Vite 8
+- React 19
+- TypeScript
 - React Router 7
-- JSON Server for local REST API
-- Vitest + Testing Library for tests
+- Vite 8
+- JSON Server
+- Vitest + Testing Library
 
-## Project Structure
-
-- `src/components` – UI components (`Header`, `Layout`, `CustomerList`, `CustomerForm`, `ErrorBoundary`)
-- `src/pages` – Route-level pages (`CustomerListPage`, `AddCustomerPage`, `EditCustomerPage`, `LoginPage`)
-- `src/hooks` – Data and context hooks (`useCustomerApi`, `useCustomerContext`, `useAuth`)
-- `src/context` – Context providers (`CustomerProvider`, `AuthProvider`)
-- `src/types` – Shared TypeScript types
-- `db.json` – Local API database file
-- `db.seed.json` – Seed data for resetting the database
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
@@ -61,39 +49,54 @@ npm run dev
 
 Then open the URL shown by Vite (typically `http://localhost:5173`).
 
-## Available Scripts
+## Default Admin Account
 
-- `npm run dev` – Start Vite dev server
-- `npm run api` – Start JSON Server on port 3001
-- `npm run api:reset` – Reset `db.json` from `db.seed.json`
-- `npm run build` – Type-check and build production assets
-- `npm run preview` – Preview the production build locally
-- `npm run lint` – Run ESLint
-- `npm run test` – Run Vitest in watch mode
-- `npm run test:run` – Run Vitest once
-- `npm run deploy` – Deploy `dist/` to GitHub Pages
+Use this built-in account for admin-only actions (for example, adding customers):
 
-## Routing
+- Email: `admin@customerapp.local`
+- Password: `Admin#123`
 
-- `/` – Customer list
-- `/add` – Add customer
-- `/login` – Login page
-- `/account` – Account session page (requires login)
-- `/edit/:id` – Edit customer
+## Scripts
 
-Unauthenticated users are redirected to `/login` when attempting to access `/edit/:id`.
+- `npm run dev` — Start Vite dev server
+- `npm run api` — Start JSON Server (`db.json`) on port `3001`
+- `npm run api:reset` — Reset `db.json` from `db.seed.json`
+- `npm run build` — Type-check and build production assets
+- `npm run preview` — Preview the production build
+- `npm run lint` — Run ESLint
+- `npm run test` — Run Vitest in watch mode
+- `npm run test:run` — Run Vitest once
+- `npm run deploy` — Deploy `dist/` to GitHub Pages
 
-`BrowserRouter` uses Vite `BASE_URL` as basename, so the app works locally and on GitHub Pages under `/customer-app/`.
+## Routing and Access Rules
 
-## API and Proxy
+- `/login` — Public login/create-account page
+- `/` — Customer list (requires authentication)
+- `/edit/:id` — Edit customer (requires authentication)
+- `/account` — Account settings (requires authentication)
+- `/add` — Add customer (requires admin role)
 
-Frontend requests use relative `/api/...` paths. Vite proxies those to JSON Server in development:
+## Project Structure
+
+- `src/components` — Shared UI components
+- `src/pages` — Route-level pages
+- `src/context` — Context providers for auth and customers
+- `src/hooks` — App hooks for auth, API, and context access
+- `src/types` — Shared TypeScript models
+- `src/utils` — Domain utilities
+- `src/test` — Unit/integration tests
+- `db.json` — Local API data source
+- `db.seed.json` — Seed file used for resets
+
+## API and Proxy (Development)
+
+The frontend calls relative `/api/...` URLs. Vite proxies these to JSON Server:
 
 - Vite proxy source: `vite.config.ts`
 - Target API: `http://localhost:3001`
 - Resource: `/customers`
 
-Common requests:
+Common endpoints:
 
 - `GET /api/customers`
 - `GET /api/customers/:id`
@@ -103,20 +106,16 @@ Common requests:
 
 ## Testing
 
-Run the full test suite:
-
 ```bash
 npm run test:run
 ```
 
-Test files are in `src/test`.
+All tests are under `src/test`.
 
 ## Deployment (GitHub Pages)
 
-This project is configured for GitHub Pages deployment.
-
-1. Ensure `homepage` in `package.json` matches your repo page URL.
-2. Build and deploy:
+1. Ensure `homepage` in `package.json` matches the repository page URL.
+2. Deploy:
 
 ```bash
 npm run deploy
