@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { CustomerForm } from '../components/CustomerForm'
+import { useAuth } from '../hooks/useAuth'
 import type { Customer, CustomerFormData } from '../types/customer'
 import { useCustomerApi } from '../hooks/useCustomerApi'
+import { canAccessCustomer } from '../utils/customerAccess'
 
 export function EditCustomerPage() {
   const navigate = useNavigate()
+  const { user, isAdmin } = useAuth()
   const { id } = useParams<{ id: string }>()
   const { customers, updateCustomer, getCustomerById, isEmailInUse, error } = useCustomerApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -77,6 +80,15 @@ export function EditCustomerPage() {
       <section>
         <h2 className="page-title">Edit Customer</h2>
         <div className="placeholder-card">Customer not found.</div>
+      </section>
+    )
+  }
+
+  if (!isAdmin && !canAccessCustomer(customer, user)) {
+    return (
+      <section>
+        <h2 className="page-title">Edit Customer</h2>
+        <div className="placeholder-card">You can only edit your own customer record.</div>
       </section>
     )
   }

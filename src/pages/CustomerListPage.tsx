@@ -4,7 +4,9 @@ import {
   type CustomerSortState,
   type SortableCustomerField,
 } from '../components/CustomerList'
+import { useAuth } from '../hooks/useAuth'
 import { useCustomerApi } from '../hooks/useCustomerApi'
+import { canAccessCustomer } from '../utils/customerAccess'
 
 const SORT_STORAGE_KEY = 'customer-list-sort'
 
@@ -34,6 +36,7 @@ function getInitialSortState(): CustomerSortState {
 }
 
 export function CustomerListPage() {
+  const { user, isAdmin } = useAuth()
   const {
     customers,
     matchingCustomers,
@@ -47,7 +50,12 @@ export function CustomerListPage() {
   const [sort, setSort] = useState<CustomerSortState>(getInitialSortState)
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const totalPages = Math.max(1, Math.ceil(matchingCustomers / rowsPerPage))
+  const visibleCustomers = isAdmin
+    ? customers
+    : customers.filter((customer) => canAccessCustomer(customer, user))
+  const visibleMatchingCustomers = isAdmin ? matchingCustomers : visibleCustomers.length
+  const visibleTotalCustomers = isAdmin ? totalCustomers : visibleCustomers.length
+  const totalPages = Math.max(1, Math.ceil(visibleMatchingCustomers / rowsPerPage))
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
 
   useEffect(() => {
@@ -55,14 +63,24 @@ export function CustomerListPage() {
   }, [sort])
 
   useEffect(() => {
-    void fetchCustomers({
-      page: Math.min(Math.max(1, currentPage), totalPages),
-      perPage: rowsPerPage,
-      searchTerm,
-      sortField: sort.field,
-      sortDirection: sort.direction,
-    })
-  }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers, totalPages])
+    void fetchCustomers(
+      isAdmin
+        ? {
+            page: Math.min(Math.max(1, currentPage), totalPages),
+            perPage: rowsPerPage,
+            searchTerm,
+            sortField: sort.field,
+            sortDirection: sort.direction,
+          }
+        : {
+            page: 1,
+            perPage: 200,
+            searchTerm,
+            sortField: sort.field,
+            sortDirection: sort.direction,
+          },
+    )
+  }, [currentPage, rowsPerPage, searchTerm, sort, fetchCustomers, isAdmin, totalPages])
 
   const handleSort = (field: SortableCustomerField) => {
     setSort((currentSort) => {
@@ -97,7 +115,7 @@ export function CustomerListPage() {
     void (async () => {
       const wasDeleted = await deleteCustomer(id)
 
-      if (wasDeleted && customers.length === 1 && currentPage > 1) {
+      if (wasDeleted && visibleCustomers.length === 1 && currentPage > 1) {
         setCurrentPage((page) => page - 1)
       }
     })()
@@ -138,24 +156,26 @@ export function CustomerListPage() {
         </div>
         <div className="results-summary-row">
           <p className="results-count">
-            Showing {customers.length} of {totalCustomers} customers
+            Showing {visibleCustomers.length} of {visibleTotalCustomers} customers
           </p>
-          <label htmlFor="rows-per-page" className="rows-per-page-label">
-            Rows per page
-            <select
-              id="rows-per-page"
-              className="rows-per-page-select"
-              value={rowsPerPage}
-              onChange={(event) => {
-                setCurrentPage(1)
-                setRowsPerPage(Number(event.target.value))
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </label>
+          {isAdmin && (
+            <label htmlFor="rows-per-page" className="rows-per-page-label">
+              Rows per page
+              <select
+                id="rows-per-page"
+                className="rows-per-page-select"
+                value={rowsPerPage}
+                onChange={(event) => {
+                  setCurrentPage(1)
+                  setRowsPerPage(Number(event.target.value))
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </label>
+          )}
         </div>
       </div>
       {isLoading ? (
@@ -168,33 +188,36 @@ export function CustomerListPage() {
         </div>
       ) : (
         <CustomerList
-          customers={customers}
+          customers={visibleCustomers}
           onDelete={handleDeleteCustomer}
+          canDelete={isAdmin}
           sort={sort}
           onSort={handleSort}
         />
       )}
-      <div className="pagination-row" aria-label="Pagination" role="navigation">
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => setCurrentPage((page) => Math.max(1, Math.min(totalPages, page) - 1))}
-          disabled={safeCurrentPage <= 1}
-        >
-          Previous
-        </button>
-        <p className="page-indicator" aria-live="polite">
-          Page {safeCurrentPage} of {totalPages}
-        </p>
-        <button
-          type="button"
-          className="secondary-button"
-          onClick={() => setCurrentPage((page) => Math.min(totalPages, Math.max(1, page) + 1))}
-          disabled={safeCurrentPage >= totalPages}
-        >
-          Next
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="pagination-row" aria-label="Pagination" role="navigation">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setCurrentPage((page) => Math.max(1, Math.min(totalPages, page) - 1))}
+            disabled={safeCurrentPage <= 1}
+          >
+            Previous
+          </button>
+          <p className="page-indicator" aria-live="polite">
+            Page {safeCurrentPage} of {totalPages}
+          </p>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, Math.max(1, page) + 1))}
+            disabled={safeCurrentPage >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </section>
   )
 }

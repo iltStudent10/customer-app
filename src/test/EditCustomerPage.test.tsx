@@ -3,11 +3,16 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { EditCustomerPage } from '../pages/EditCustomerPage'
+import { useAuth } from '../hooks/useAuth'
 import { useCustomerApi } from '../hooks/useCustomerApi'
 import type { CustomerFormData } from '../types/customer'
 
 vi.mock('../hooks/useCustomerApi', () => ({
   useCustomerApi: vi.fn(),
+}))
+
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: vi.fn(),
 }))
 
 vi.mock('../components/CustomerForm', () => ({
@@ -49,6 +54,11 @@ describe('EditCustomerPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useAuth).mockReturnValue({
+      user: { username: 'admin@customerapp.local', role: 'admin' },
+      isAdmin: true,
+      isAuthenticated: true,
+    } as unknown as ReturnType<typeof useAuth>)
   })
 
   function renderPage(path: string) {
@@ -177,6 +187,41 @@ describe('EditCustomerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Customer not found.')).toBeInTheDocument()
+    })
+  })
+
+  it('prevents non-admin users from editing other customer records', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { username: 'maria@example.com', role: 'user' },
+      isAdmin: false,
+      isAuthenticated: true,
+    } as unknown as ReturnType<typeof useAuth>)
+
+    vi.mocked(useCustomerApi).mockReturnValue({
+      customers: [
+        {
+          id: 1,
+          name: 'James Chen',
+          email: 'james@example.com',
+          phone: '555-0102',
+          address: '1600 Pennsylvania Ave',
+          city: 'Washington',
+          state: 'DC',
+          zip: '20500',
+        },
+      ],
+      updateCustomer,
+      getCustomerById,
+      isEmailInUse,
+      error: null,
+    } as unknown as ReturnType<typeof useCustomerApi>)
+
+    renderPage('/edit/1')
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('You can only edit your own customer record.'),
+      ).toBeInTheDocument()
     })
   })
 })

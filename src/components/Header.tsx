@@ -25,7 +25,7 @@ function getInitialTheme(): Theme {
 export function Header() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const navigate = useNavigate()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, isAdmin, user, logout } = useAuth()
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -56,14 +56,16 @@ export function Header() {
             >
               Customers
             </NavLink>
-            <NavLink
-              to="/add"
-              className={({ isActive }) =>
-                isActive ? 'nav-link active' : 'nav-link'
-              }
-            >
-              Add Customer
-            </NavLink>
+            {isAdmin && (
+              <NavLink
+                to="/add"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Add Customer
+              </NavLink>
+            )}
             {!isAuthenticated && (
               <NavLink
                 to="/login"

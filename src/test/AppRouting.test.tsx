@@ -6,13 +6,54 @@ import { AuthProvider } from '../context/AuthContext'
 import { CustomerProvider } from '../context/CustomerContext'
 
 const AUTH_STORAGE_KEY = 'customer-manager-auth-user'
+const AUTH_ACCOUNTS_STORAGE_KEY = 'customer-manager-auth-accounts'
 
 describe('App routing', () => {
   beforeEach(() => {
     window.localStorage.clear()
   })
 
-  it('renders the add customer form when navigating to /add', async () => {
+  it('redirects unauthenticated users to /login when navigating to /add', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+      headers: { get: () => '0' },
+    } as unknown as Response)
+
+    render(
+      <MemoryRouter initialEntries={['/add']}>
+        <AuthProvider>
+          <CustomerProvider>
+            <App />
+          </CustomerProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Login', level: 2 })).toBeInTheDocument()
+    })
+
+    expect(screen.getByLabelText('Email or Phone')).toBeInTheDocument()
+  })
+
+  it('renders add customer form for admin users on /add', async () => {
+    window.localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ username: 'admin@customerapp.local', role: 'admin' }),
+    )
+    window.localStorage.setItem(
+      AUTH_ACCOUNTS_STORAGE_KEY,
+      JSON.stringify([
+        {
+          username: 'admin@customerapp.local',
+          email: 'admin@customerapp.local',
+          role: 'admin',
+          password: 'Admin#123',
+        },
+      ]),
+    )
+
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => [],

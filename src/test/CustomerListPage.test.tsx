@@ -3,10 +3,15 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { CustomerListPage } from '../pages/CustomerListPage'
+import { useAuth } from '../hooks/useAuth'
 import { useCustomerApi } from '../hooks/useCustomerApi'
 
 vi.mock('../hooks/useCustomerApi', () => ({
   useCustomerApi: vi.fn(),
+}))
+
+vi.mock('../hooks/useAuth', () => ({
+  useAuth: vi.fn(),
 }))
 
 describe('CustomerListPage', () => {
@@ -16,6 +21,11 @@ describe('CustomerListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     window.localStorage.clear()
+    vi.mocked(useAuth).mockReturnValue({
+      user: { username: 'admin@customerapp.local', role: 'admin' },
+      isAdmin: true,
+      isAuthenticated: true,
+    } as unknown as ReturnType<typeof useAuth>)
   })
 
   it('loads first page and supports next page navigation', async () => {

@@ -10,15 +10,21 @@ const AUTH_STORAGE_KEY = 'customer-manager-auth-user'
 const AUTH_ACCOUNTS_STORAGE_KEY = 'customer-manager-auth-accounts'
 const MIN_PASSWORD_LENGTH = 8
 const HASH_VERSION = 2
+const ADMIN_EMAIL = 'admin@customerapp.local'
+const ADMIN_PASSWORD = 'Admin#123'
+
+type AuthRole = 'admin' | 'user'
 
 interface AuthUser {
   username: string
+  role: AuthRole
 }
 
 interface AuthAccount {
   username: string
   email?: string
   phone?: string
+  role?: AuthRole
   passwordHash: string
   passwordSalt: string
   passwordVersion: number
@@ -28,6 +34,7 @@ interface LegacyAuthAccount {
   username: string
   email?: string
   phone?: string
+  role?: AuthRole
   password: string
 }
 
@@ -41,11 +48,16 @@ interface AuthResult {
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
+  isAdmin: boolean
   login: (identifier: string, password: string) => Promise<AuthResult>
   register: (username: string, password: string) => Promise<AuthResult>
   updateUsername: (newUsername: string) => Promise<AuthResult>
   updatePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>
   logout: () => void
+}
+
+function resolveRole(role: string | undefined): AuthRole {
+  return role === 'admin' ? 'admin' : 'user'
 }
 
 function normalizeUsername(username: string) {
@@ -60,11 +72,38 @@ function normalizePhone(phone: string) {
 
   const hasLeadingPlus = trimmedPhone.startsWith('+')
   const digitsOnlyPhone = trimmedPhone.replace(/\D/g, '')
-  if (!digitsOnlyPhone) {
+  if (!digitsOnlyPhone || digitsOnlyPhone.length < 7) {
     return ''
   }
 
   return hasLeadingPlus ? `+${digitsOnlyPhone}` : digitsOnlyPhone
+}
+
+function toAccountIdentifierFields(identifier: string): {
+  username: string
+  email?: string
+  phone?: string
+} {
+  const normalizedTextIdentifier = normalizeUsername(identifier)
+  const normalizedPhoneIdentifier = normalizePhone(identifier)
+
+  if (normalizedTextIdentifier.includes('@')) {
+    return {
+      username: normalizedTextIdentifier,
+      email: normalizedTextIdentifier,
+    }
+  }
+
+  if (normalizedPhoneIdentifier) {
+    return {
+      username: normalizedPhoneIdentifier,
+      phone: normalizedPhoneIdentifier,
+    }
+  }
+
+  return {
+    username: normalizedTextIdentifier,
+  }
 }
 
 function validatePassword(password: string): string | null {
@@ -104,7 +143,10 @@ function getInitialUser(): AuthUser | null {
   try {
     const parsedUser = JSON.parse(storedUser) as AuthUser
     if (typeof parsedUser.username === 'string' && parsedUser.username.trim()) {
-      return { username: parsedUser.username.trim() }
+      return {
+        username: parsedUser.username.trim(),
+        role: resolveRole(parsedUser.role),
+      }
     }
   } catch {
     return null
@@ -129,7 +171,7 @@ function getInitialAccounts(): AuthAccount[] {
       return []
     }
 
-    return parsedAccounts.filter(
+    const validAccounts = parsedAccounts.filter(
       (account) =>
         typeof account.username === 'string' &&
         account.username.trim() &&
@@ -146,7 +188,9 @@ function getInitialAccounts(): AuthAccount[] {
           ('password' in account &&
             typeof account.password === 'string' &&
             account.password.trim())),
-    ) as AuthAccount[]
+    ) as StoredAuthAccount[]
+
+    return validAccounts as AuthAccount[]
   } catch {
     return []
   }
@@ -171,14 +215,22 @@ function generateSalt(length = 16): string {
 }
 
 async function createHashedAccount(
-  username: string,
+  account: {
+    username: string
+    email?: string
+    phone?: string
+    role?: AuthRole
+  },
   password: string,
 ): Promise<AuthAccount> {
   const passwordSalt = generateSalt()
   const passwordHash = await sha256(`${passwordSalt}:${password}`)
 
   return {
-    username,
+    username: account.username,
+    email: account.email,
+    phone: account.phone,
+    role: account.role,
     passwordHash,
     passwordSalt,
     passwordVersion: HASH_VERSION,
@@ -266,6 +318,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     )
 
     if (matchingAccountIndex === -1) {
+      if (
+        normalizedTextIdentifier === ADMIN_EMAIL &&
+        normalizedPassword === ADMIN_PASSWORD
+      ) {
+        const nextUser = { username: ADMIN_EMAIL, role: 'admin' as const }
+        setUser(nextUser)
+        window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+        return { success: true }
+      }
+
       return {
         success: false,
         error: 'Invalid email/phone or password.',
@@ -284,7 +346,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     if (!isHashedAccount(matchingAccount)) {
       const upgradedAccount = await createHashedAccount(
-        matchingAccount.username,
+        {
+          username: matchingAccount.username,
+          email: matchingAccount.email,
+          phone: matchingAccount.phone,
+          role: matchingAccount.role,
+        },
         normalizedPassword,
       )
       const nextAccounts = [...accounts]
@@ -292,7 +359,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       persistAccounts(nextAccounts)
     }
 
-    const nextUser = { username: matchingAccount.username }
+    const nextUser = {
+      username: matchingAccount.username,
+      role: resolveRole(matchingAccount.role),
+    }
     setUser(nextUser)
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
     return { success: true }
@@ -318,11 +388,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       }
 
-      const usernameAlreadyExists = accounts.some(
-        (account) =>
-          normalizeUsername(account.username) ===
-          normalizeUsername(normalizedUsername),
-      )
+      const normalizedTextIdentifier = normalizeUsername(normalizedUsername)
+      const normalizedPhoneIdentifier = normalizePhone(normalizedUsername)
+      const usernameAlreadyExists = accounts.some((account) => {
+        const accountIdentifiers = getNormalizedAccountIdentifiers(account)
+        return (
+          accountIdentifiers.includes(normalizedTextIdentifier) ||
+          (normalizedPhoneIdentifier
+            ? accountIdentifiers.includes(normalizedPhoneIdentifier)
+            : false)
+        )
+      })
 
       if (usernameAlreadyExists) {
         return {
@@ -332,13 +408,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const nextAccount = await createHashedAccount(
-        normalizedUsername,
+        {
+          ...toAccountIdentifierFields(normalizedUsername),
+          role: 'user',
+        },
         normalizedPassword,
       )
       const nextAccounts = [...accounts, nextAccount]
       persistAccounts(nextAccounts)
 
-      const nextUser = { username: nextAccount.username }
+      const nextUser = { username: nextAccount.username, role: 'user' as const }
       setUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
 
@@ -403,14 +482,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       }
 
+      const nextIdentifierFields = toAccountIdentifierFields(normalizedNewUsername)
+
       const nextAccounts = [...accounts]
       nextAccounts[currentAccountIndex] = {
         ...nextAccounts[currentAccountIndex],
-        username: normalizedNewUsername,
+        ...nextIdentifierFields,
       }
       persistAccounts(nextAccounts)
 
-      const nextUser = { username: normalizedNewUsername }
+      const nextUser = {
+        username: nextIdentifierFields.username,
+        role: resolveRole(nextAccounts[currentAccountIndex].role),
+      }
       setUser(nextUser)
       window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
 
@@ -481,7 +565,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const nextAccounts = [...accounts]
       nextAccounts[currentAccountIndex] = await createHashedAccount(
-        currentAccount.username,
+        {
+          username: currentAccount.username,
+          email: currentAccount.email,
+          phone: currentAccount.phone,
+          role: currentAccount.role,
+        },
         normalizedNewPassword,
       )
       persistAccounts(nextAccounts)
@@ -497,6 +586,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       user,
       isAuthenticated: Boolean(user),
+      isAdmin: user?.role === 'admin',
       login,
       register,
       updateUsername,

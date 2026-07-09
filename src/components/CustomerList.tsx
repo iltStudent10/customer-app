@@ -12,6 +12,7 @@ export interface CustomerSortState {
 interface CustomerListProps {
   customers: Customer[]
   onDelete: (id: number) => void
+  canDelete?: boolean
   sort?: CustomerSortState
   onSort?: (field: SortableCustomerField) => void
 }
@@ -19,6 +20,7 @@ interface CustomerListProps {
 export function CustomerList({
   customers,
   onDelete,
+  canDelete = true,
   sort,
   onSort,
 }: CustomerListProps) {
@@ -109,14 +111,16 @@ export function CustomerList({
                 >
                   Edit
                 </Link>
-                <button
-                  type="button"
-                  className="action-button"
-                  aria-label={`Delete ${customer.name}`}
-                  onClick={() => onDelete(customer.id)}
-                >
-                  Delete
-                </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    className="action-button"
+                    aria-label={`Delete ${customer.name}`}
+                    onClick={() => onDelete(customer.id)}
+                  >
+                    Delete
+                  </button>
+                )}
               </td>
             </tr>
           ))}
