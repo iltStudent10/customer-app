@@ -64,14 +64,26 @@ export function Header() {
             >
               Add Customer
             </NavLink>
-            <NavLink
-              to="/login"
-              className={({ isActive }) =>
-                isActive ? 'nav-link active' : 'nav-link'
-              }
-            >
-              {isAuthenticated ? 'Account' : 'Login'}
-            </NavLink>
+            {!isAuthenticated && (
+              <NavLink
+                to="/login"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Login
+              </NavLink>
+            )}
+            {isAuthenticated && (
+              <NavLink
+                to="/account"
+                className={({ isActive }) =>
+                  isActive ? 'nav-link active' : 'nav-link'
+                }
+              >
+                Account
+              </NavLink>
+            )}
           </nav>
           {isAuthenticated && user ? (
             <>

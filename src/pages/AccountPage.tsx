@@ -1,0 +1,141 @@
+import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+
+export function AccountPage() {
+  const navigate = useNavigate()
+  const { user, logout, updateUsername, updatePassword } = useAuth()
+  const [newUsername, setNewUsername] = useState(user?.username ?? '')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const handleLogout = () => {
+    logout()
+    navigate('/', { replace: true })
+  }
+
+  const handleUsernameSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    const result = updateUsername(newUsername)
+    if (!result.success) {
+      setError(result.error ?? 'Unable to update username.')
+      return
+    }
+
+    setSuccess('Username updated successfully.')
+  }
+
+  const handlePasswordSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setError(null)
+    setSuccess(null)
+
+    if (newPassword.trim() !== confirmNewPassword.trim()) {
+      setError('New password and confirm password must match.')
+      return
+    }
+
+    const result = updatePassword(currentPassword, newPassword)
+    if (!result.success) {
+      setError(result.error ?? 'Unable to update password.')
+      return
+    }
+
+    setCurrentPassword('')
+    setNewPassword('')
+    setConfirmNewPassword('')
+    setSuccess('Password updated successfully.')
+  }
+
+  return (
+    <section>
+      <h2 className="page-title">Account</h2>
+      <p className="page-subtitle">Manage your sign-in session and credentials.</p>
+      {error && <div className="placeholder-card auth-error-card">{error}</div>}
+      {success && <div className="placeholder-card auth-success-card">{success}</div>}
+      <div className="placeholder-card">
+        <p className="page-subtitle">Signed in as {user?.username ?? 'Unknown user'}</p>
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={() => navigate('/')}>
+            Back to Customers
+          </button>
+          <button type="button" className="primary-button" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <form className="customer-form" onSubmit={handleUsernameSubmit}>
+        <h3 className="page-subtitle">Change Username</h3>
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor="new-username">New Username</label>
+            <input
+              id="new-username"
+              name="new-username"
+              type="text"
+              autoComplete="username"
+              value={newUsername}
+              onChange={(event) => setNewUsername(event.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button type="submit" className="primary-button">
+            Update Username
+          </button>
+        </div>
+      </form>
+
+      <form className="customer-form account-form-spacing" onSubmit={handlePasswordSubmit}>
+        <h3 className="page-subtitle">Change Password</h3>
+        <div className="form-grid">
+          <div className="form-field">
+            <label htmlFor="current-password">Current Password</label>
+            <input
+              id="current-password"
+              name="current-password"
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="new-password">New Password</label>
+            <input
+              id="new-password"
+              name="new-password"
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="confirm-new-password">Confirm New Password</label>
+            <input
+              id="confirm-new-password"
+              name="confirm-new-password"
+              type="password"
+              autoComplete="new-password"
+              value={confirmNewPassword}
+              onChange={(event) => setConfirmNewPassword(event.target.value)}
+            />
+          </div>
+        </div>
+        <div className="form-actions">
+          <button type="submit" className="primary-button">
+            Update Password
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}

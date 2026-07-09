@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import { Layout } from './components/Layout.tsx'
 import { useAuth } from './hooks/useAuth'
+import { AccountPage } from './pages/AccountPage.tsx'
 import { AddCustomerPage } from './pages/AddCustomerPage.tsx'
 import { CustomerListPage } from './pages/CustomerListPage.tsx'
 import { EditCustomerPage } from './pages/EditCustomerPage.tsx'
@@ -27,6 +28,14 @@ function App() {
           <Route path="/" element={<CustomerListPage />} />
           <Route path="/add" element={<AddCustomerPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <AccountPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/edit/:id"
             element={

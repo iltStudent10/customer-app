@@ -1,11 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
 import { AuthProvider } from '../context/AuthContext'
 import { CustomerProvider } from '../context/CustomerContext'
 
+const AUTH_STORAGE_KEY = 'customer-manager-auth-user'
+
 describe('App routing', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
   it('renders the add customer form when navigating to /add', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
       ok: true,
@@ -57,5 +63,34 @@ describe('App routing', () => {
     expect(screen.getByLabelText('Username')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
+  })
+
+  it('renders account page when navigating to /account while authenticated', async () => {
+    window.localStorage.setItem(
+      AUTH_STORAGE_KEY,
+      JSON.stringify({ username: 'maria' }),
+    )
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+      headers: { get: () => '0' },
+    } as unknown as Response)
+
+    render(
+      <MemoryRouter initialEntries={['/account']}>
+        <AuthProvider>
+          <CustomerProvider>
+            <App />
+          </CustomerProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Account', level: 2 })).toBeInTheDocument()
+    })
+
+    expect(screen.getAllByText('Signed in as maria')).toHaveLength(2)
   })
 })

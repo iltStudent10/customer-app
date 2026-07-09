@@ -29,6 +29,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   login: (username: string, password: string) => boolean
   register: (username: string, password: string) => AuthResult
+  updateUsername: (newUsername: string) => AuthResult
+  updatePassword: (currentPassword: string, newPassword: string) => AuthResult
   logout: () => void
 }
 
@@ -202,15 +204,153 @@ export function AuthProvider({ children }: PropsWithChildren) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY)
   }, [])
 
+  const updateUsername = useCallback(
+    (newUsername: string): AuthResult => {
+      if (!user) {
+        return {
+          success: false,
+          error: 'You must be logged in to update your username.',
+        }
+      }
+
+      const normalizedNewUsername = newUsername.trim()
+      if (!normalizedNewUsername) {
+        return {
+          success: false,
+          error: 'Enter a new username.',
+        }
+      }
+
+      if (
+        normalizeUsername(normalizedNewUsername) === normalizeUsername(user.username)
+      ) {
+        return {
+          success: false,
+          error: 'Your new username must be different from your current username.',
+        }
+      }
+
+      const usernameAlreadyExists = accounts.some(
+        (account) =>
+          normalizeUsername(account.username) ===
+            normalizeUsername(normalizedNewUsername) &&
+          normalizeUsername(account.username) !== normalizeUsername(user.username),
+      )
+
+      if (usernameAlreadyExists) {
+        return {
+          success: false,
+          error: 'That username is already in use. Choose a different one.',
+        }
+      }
+
+      const currentAccountIndex = accounts.findIndex(
+        (account) => normalizeUsername(account.username) === normalizeUsername(user.username),
+      )
+
+      if (currentAccountIndex === -1) {
+        return {
+          success: false,
+          error: 'Unable to update username for this session.',
+        }
+      }
+
+      const nextAccounts = [...accounts]
+      nextAccounts[currentAccountIndex] = {
+        ...nextAccounts[currentAccountIndex],
+        username: normalizedNewUsername,
+      }
+      persistAccounts(nextAccounts)
+
+      const nextUser = { username: normalizedNewUsername }
+      setUser(nextUser)
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+
+      return {
+        success: true,
+      }
+    },
+    [accounts, persistAccounts, user],
+  )
+
+  const updatePassword = useCallback(
+    (currentPassword: string, newPassword: string): AuthResult => {
+      if (!user) {
+        return {
+          success: false,
+          error: 'You must be logged in to update your password.',
+        }
+      }
+
+      const normalizedCurrentPassword = currentPassword.trim()
+      const normalizedNewPassword = newPassword.trim()
+
+      if (!normalizedCurrentPassword || !normalizedNewPassword) {
+        return {
+          success: false,
+          error: 'Enter both current and new password.',
+        }
+      }
+
+      const currentAccountIndex = accounts.findIndex(
+        (account) => normalizeUsername(account.username) === normalizeUsername(user.username),
+      )
+
+      if (currentAccountIndex === -1) {
+        return {
+          success: false,
+          error: 'Unable to update password for this session.',
+        }
+      }
+
+      const currentAccount = accounts[currentAccountIndex]
+      if (currentAccount.password !== normalizedCurrentPassword) {
+        return {
+          success: false,
+          error: 'Current password is incorrect.',
+        }
+      }
+
+      if (normalizedCurrentPassword === normalizedNewPassword) {
+        return {
+          success: false,
+          error: 'New password must be different from your current password.',
+        }
+      }
+
+      const passwordValidationError = validatePassword(normalizedNewPassword)
+      if (passwordValidationError) {
+        return {
+          success: false,
+          error: passwordValidationError,
+        }
+      }
+
+      const nextAccounts = [...accounts]
+      nextAccounts[currentAccountIndex] = {
+        ...currentAccount,
+        password: normalizedNewPassword,
+      }
+      persistAccounts(nextAccounts)
+
+      return {
+        success: true,
+      }
+    },
+    [accounts, persistAccounts, user],
+  )
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       isAuthenticated: Boolean(user),
       login,
       register,
+      updateUsername,
+      updatePassword,
       logout,
     }),
-    [user, login, register, logout],
+    [user, login, register, updateUsername, updatePassword, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

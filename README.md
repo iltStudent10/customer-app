@@ -10,6 +10,7 @@ A React + TypeScript application for managing customer records with create, read
 - Add and edit customer forms with client-side validation
 - Account creation and login with session persisted in local storage (passwords require 8+ chars, uppercase, lowercase, number, and special character)
 - Protected edit access (users must be logged in to edit customers)
+- Account page supports changing username and password
 - Duplicate email validation before create/update
 - Delete confirmation dialog
 - Light/Dark mode toggle persisted in local storage
@@ -77,6 +78,7 @@ Then open the URL shown by Vite (typically `http://localhost:5173`).
 - `/` – Customer list
 - `/add` – Add customer
 - `/login` – Login page
+- `/account` – Account session page (requires login)
 - `/edit/:id` – Edit customer
 
 Unauthenticated users are redirected to `/login` when attempting to access `/edit/:id`.
