@@ -17,6 +17,7 @@ export function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isCreateMode, setIsCreateMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const redirectPath =
     (location.state as NavigationState | null)?.from?.pathname ?? '/'
@@ -25,33 +26,38 @@ export function LoginPage() {
     return <Navigate to={redirectPath} replace />
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
+    setIsSubmitting(true)
 
-    if (isCreateMode) {
-      if (password.trim() !== confirmPassword.trim()) {
-        setError('Passwords do not match.')
+    try {
+      if (isCreateMode) {
+        if (password.trim() !== confirmPassword.trim()) {
+          setError('Passwords do not match.')
+          return
+        }
+
+        const registrationResult = await register(username, password)
+        if (!registrationResult.success) {
+          setError(registrationResult.error ?? 'Unable to create account.')
+          return
+        }
+
+        navigate(redirectPath, { replace: true })
         return
       }
 
-      const registrationResult = register(username, password)
-      if (!registrationResult.success) {
-        setError(registrationResult.error ?? 'Unable to create account.')
+      const loginResult = await login(username, password)
+      if (!loginResult.success) {
+        setError(loginResult.error ?? 'Invalid username or password.')
         return
       }
 
       navigate(redirectPath, { replace: true })
-      return
+    } finally {
+      setIsSubmitting(false)
     }
-
-    const didLogin = login(username, password)
-    if (!didLogin) {
-      setError('Invalid username or password.')
-      return
-    }
-
-    navigate(redirectPath, { replace: true })
   }
 
   return (
@@ -64,6 +70,7 @@ export function LoginPage() {
       </p>
       {error && <div className="placeholder-card auth-error-card">{error}</div>}
       <form className="customer-form" onSubmit={handleSubmit}>
+        <fieldset disabled={isSubmitting}>
         <div className="form-grid">
           <div className="form-field">
             <label htmlFor="username">Username</label>
@@ -115,9 +122,16 @@ export function LoginPage() {
             {isCreateMode ? 'Back to Login' : 'Create Account'}
           </button>
           <button type="submit" className="primary-button">
-            {isCreateMode ? 'Create Account' : 'Login'}
+            {isSubmitting
+              ? isCreateMode
+                ? 'Creating Account...'
+                : 'Signing In...'
+              : isCreateMode
+                ? 'Create Account'
+                : 'Login'}
           </button>
         </div>
+        </fieldset>
       </form>
     </section>
   )

@@ -68,8 +68,13 @@ describe('useCustomerApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/api/customers?_page=2&_limit=10&q=maria&_sort=name&_order=asc',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/customers?_page=1&_limit=1')
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/customers?_page=1&_limit=1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
     expect(result.current.customers).toHaveLength(1)
     expect(result.current.matchingCustomers).toBe(21)
     expect(result.current.totalCustomers).toBe(21)
@@ -122,8 +127,13 @@ describe('useCustomerApi', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/api/customers?_page=1&_limit=10&q=maria',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/customers?_page=1&_limit=1')
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/customers?_page=1&_limit=1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
     expect(result.current.matchingCustomers).toBe(1)
     expect(result.current.totalCustomers).toBe(12)
   })

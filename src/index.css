@@ -440,6 +440,13 @@ body {
   box-shadow: 0 1px 2px rgba(37, 42, 72, 0.06);
 }
 
+.customer-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

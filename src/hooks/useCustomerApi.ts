@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useCustomerContext } from './useCustomerContext'
 import type { Customer, CustomerFormData } from '../types/customer'
 
+const REQUEST_TIMEOUT_MS = 8000
+const RETRY_ATTEMPTS = 2
+const RETRY_DELAY_MS = 250
+
 interface FetchCustomersOptions {
   page?: number
   perPage?: number
@@ -16,6 +20,31 @@ interface FetchCustomersResult {
   totalCustomers: number
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function isRetriableStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+function toFriendlyErrorMessage(
+  fallbackMessage: string,
+  error: unknown,
+): string {
+  if (isAbortError(error)) {
+    return 'The request timed out. Please try again.'
+  }
+
+  return fallbackMessage
+}
+
 export function useCustomerApi() {
   const { customers, setCustomers } = useCustomerContext()
   const [isLoading, setIsLoading] = useState(customers.length === 0)
@@ -23,29 +52,100 @@ export function useCustomerApi() {
   const [totalCustomers, setTotalCustomers] = useState(customers.length)
   const [matchingCustomers, setMatchingCustomers] = useState(customers.length)
   const lastQueryRef = useRef<FetchCustomersOptions>({ page: 1, perPage: 10 })
+  const listAbortControllerRef = useRef<AbortController | null>(null)
+  const listRequestIdRef = useRef(0)
 
-  const requestTotalCustomersCount = useCallback(async (): Promise<number> => {
-    const params = new URLSearchParams()
-    params.set('_page', '1')
-    params.set('_limit', '1')
+  const fetchWithResilience = useCallback(
+    async (input: string, init?: RequestInit): Promise<Response> => {
+      const method = (init?.method ?? 'GET').toUpperCase()
+      const allowsRetry = method === 'GET' || method === 'HEAD'
+      const maxAttempts = allowsRetry ? RETRY_ATTEMPTS + 1 : 1
+      let lastError: Error | null = null
 
-    const response = await fetch(`/api/customers?${params.toString()}`)
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        const timeoutController = new AbortController()
+        const timeoutId = window.setTimeout(() => {
+          timeoutController.abort()
+        }, REQUEST_TIMEOUT_MS)
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch total customer count.')
-    }
+        if (init?.signal) {
+          if (init.signal.aborted) {
+            timeoutController.abort()
+          } else {
+            init.signal.addEventListener(
+              'abort',
+              () => {
+                timeoutController.abort()
+              },
+              { once: true },
+            )
+          }
+        }
 
-    const totalCountHeader = Number(response.headers.get('X-Total-Count'))
-    if (Number.isFinite(totalCountHeader) && totalCountHeader >= 0) {
-      return totalCountHeader
-    }
+        try {
+          const response = await fetch(input, {
+            ...init,
+            signal: timeoutController.signal,
+          })
 
-    const data = (await response.json()) as Customer[]
-    return data.length
-  }, [])
+          if (!response.ok) {
+            if (allowsRetry && attempt < maxAttempts && isRetriableStatus(response.status)) {
+              await delay(RETRY_DELAY_MS * attempt)
+              continue
+            }
+
+            throw new Error(`Request failed with status ${response.status}`)
+          }
+
+          return response
+        } catch (error) {
+          if (error instanceof Error) {
+            lastError = error
+          } else {
+            lastError = new Error('Request failed')
+          }
+
+          if (!allowsRetry || attempt === maxAttempts || isAbortError(error)) {
+            break
+          }
+
+          await delay(RETRY_DELAY_MS * attempt)
+        } finally {
+          window.clearTimeout(timeoutId)
+        }
+      }
+
+      throw lastError ?? new Error('Request failed')
+    },
+    [],
+  )
+
+  const requestTotalCustomersCount = useCallback(
+    async (signal?: AbortSignal): Promise<number> => {
+      const params = new URLSearchParams()
+      params.set('_page', '1')
+      params.set('_limit', '1')
+
+      const response = await fetchWithResilience(`/api/customers?${params.toString()}`, {
+        signal,
+      })
+
+      const totalCountHeader = Number(response.headers.get('X-Total-Count'))
+      if (Number.isFinite(totalCountHeader) && totalCountHeader >= 0) {
+        return totalCountHeader
+      }
+
+      const data = (await response.json()) as Customer[]
+      return data.length
+    },
+    [fetchWithResilience],
+  )
 
   const requestCustomers = useCallback(
-    async (options: FetchCustomersOptions): Promise<FetchCustomersResult> => {
+    async (
+      options: FetchCustomersOptions,
+      signal?: AbortSignal,
+    ): Promise<FetchCustomersResult> => {
       const params = new URLSearchParams()
       params.set('_page', String(options.page ?? 1))
       params.set('_limit', String(options.perPage ?? 10))
@@ -60,11 +160,9 @@ export function useCustomerApi() {
         params.set('_order', options.sortDirection ?? 'asc')
       }
 
-      const response = await fetch(`/api/customers?${params.toString()}`)
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch customers.')
-      }
+      const response = await fetchWithResilience(`/api/customers?${params.toString()}`, {
+        signal,
+      })
 
       const data = (await response.json()) as Customer[]
       const matchingCountHeader = Number(response.headers.get('X-Total-Count'))
@@ -75,7 +173,7 @@ export function useCustomerApi() {
 
       const hasSearchTerm = Boolean(normalizedSearch)
       const resolvedTotalCount = hasSearchTerm
-        ? await requestTotalCustomersCount()
+        ? await requestTotalCustomersCount(signal)
         : resolvedMatchingCount
 
       return {
@@ -84,11 +182,11 @@ export function useCustomerApi() {
         totalCustomers: resolvedTotalCount,
       }
     },
-    [requestTotalCustomersCount],
+    [fetchWithResilience, requestTotalCustomersCount],
   )
 
-  const refreshCustomers = useCallback(async () => {
-    const data = await requestCustomers(lastQueryRef.current)
+  const refreshCustomers = useCallback(async (signal?: AbortSignal) => {
+    const data = await requestCustomers(lastQueryRef.current, signal)
     setCustomers(data.customers)
     setMatchingCustomers(data.matchingCustomers)
     setTotalCustomers(data.totalCustomers)
@@ -99,17 +197,45 @@ export function useCustomerApi() {
       lastQueryRef.current = { ...lastQueryRef.current, ...options }
     }
 
+    listAbortControllerRef.current?.abort()
+    const listAbortController = new AbortController()
+    listAbortControllerRef.current = listAbortController
+    const requestId = listRequestIdRef.current + 1
+    listRequestIdRef.current = requestId
+
     setIsLoading(true)
     setError(null)
 
     try {
-      await refreshCustomers()
-    } catch {
-      setError('Unable to load customers right now.')
+      const data = await requestCustomers(lastQueryRef.current, listAbortController.signal)
+
+      if (listRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setCustomers(data.customers)
+      setMatchingCustomers(data.matchingCustomers)
+      setTotalCustomers(data.totalCustomers)
+    } catch (error) {
+      if (listRequestIdRef.current !== requestId) {
+        return
+      }
+
+      if (isAbortError(error)) {
+        return
+      }
+
+      setError(toFriendlyErrorMessage('Unable to load customers right now.', error))
     } finally {
-      setIsLoading(false)
+      if (listRequestIdRef.current === requestId) {
+        setIsLoading(false)
+      }
+
+      if (listAbortControllerRef.current === listAbortController) {
+        listAbortControllerRef.current = null
+      }
     }
-  }, [refreshCustomers])
+  }, [requestCustomers, setCustomers])
 
   useEffect(() => {
     if (customers.length > 0) {
@@ -136,6 +262,7 @@ export function useCustomerApi() {
 
     return () => {
       isMounted = false
+      listAbortControllerRef.current?.abort()
     }
   }, [customers.length, refreshCustomers])
 
@@ -147,20 +274,31 @@ export function useCustomerApi() {
       }
 
       try {
-        const response = await fetch(`/api/customers/${id}`)
+        const timeoutController = new AbortController()
+        const timeoutId = window.setTimeout(() => {
+          timeoutController.abort()
+        }, REQUEST_TIMEOUT_MS)
 
-        if (response.status === 404) {
-          return null
+        try {
+          const response = await fetch(`/api/customers/${id}`, {
+            signal: timeoutController.signal,
+          })
+
+          if (response.status === 404) {
+            return null
+          }
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch customer.')
+          }
+
+          const data = (await response.json()) as Customer
+          return data
+        } finally {
+          window.clearTimeout(timeoutId)
         }
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch customer.')
-        }
-
-        const data = (await response.json()) as Customer
-        return data
-      } catch {
-        setError('Unable to load customer right now.')
+      } catch (error) {
+        setError(toFriendlyErrorMessage('Unable to load customer right now.', error))
         return null
       }
     },
@@ -173,26 +311,22 @@ export function useCustomerApi() {
       setError(null)
 
       try {
-        const response = await fetch('/api/customers', {
+        await fetchWithResilience('/api/customers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to add customer.')
-        }
-
         await refreshCustomers()
         return true
-      } catch {
-        setError('Unable to add customer right now.')
+      } catch (error) {
+        setError(toFriendlyErrorMessage('Unable to add customer right now.', error))
         return false
       } finally {
         setIsLoading(false)
       }
     },
-    [refreshCustomers],
+    [fetchWithResilience, refreshCustomers],
   )
 
   const isEmailInUse = useCallback(
@@ -203,13 +337,9 @@ export function useCustomerApi() {
       }
 
       try {
-        const response = await fetch(
+        const response = await fetchWithResilience(
           `/api/customers?email=${encodeURIComponent(normalizedEmail)}`,
         )
-
-        if (!response.ok) {
-          throw new Error('Failed to check duplicate email.')
-        }
 
         const data = (await response.json()) as Customer[]
         return data.some((customer) => {
@@ -219,12 +349,12 @@ export function useCustomerApi() {
             (excludeCustomerId === undefined || customer.id !== excludeCustomerId)
           )
         })
-      } catch {
-        setError('Unable to validate email right now.')
+      } catch (error) {
+        setError(toFriendlyErrorMessage('Unable to validate email right now.', error))
         return false
       }
     },
-    [],
+    [fetchWithResilience],
   )
 
   const updateCustomer = useCallback(
@@ -233,26 +363,22 @@ export function useCustomerApi() {
       setError(null)
 
       try {
-        const response = await fetch(`/api/customers/${customer.id}`, {
+        await fetchWithResilience(`/api/customers/${customer.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(customer),
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to update customer.')
-        }
-
         await refreshCustomers()
         return true
-      } catch {
-        setError('Unable to update customer right now.')
+      } catch (error) {
+        setError(toFriendlyErrorMessage('Unable to update customer right now.', error))
         return false
       } finally {
         setIsLoading(false)
       }
     },
-    [refreshCustomers],
+    [fetchWithResilience, refreshCustomers],
   )
 
   const deleteCustomer = useCallback(
@@ -261,24 +387,20 @@ export function useCustomerApi() {
       setError(null)
 
       try {
-        const response = await fetch(`/api/customers/${id}`, {
+        await fetchWithResilience(`/api/customers/${id}`, {
           method: 'DELETE',
         })
 
-        if (!response.ok) {
-          throw new Error('Failed to delete customer.')
-        }
-
         await refreshCustomers()
         return true
-      } catch {
-        setError('Unable to delete customer right now.')
+      } catch (error) {
+        setError(toFriendlyErrorMessage('Unable to delete customer right now.', error))
         return false
       } finally {
         setIsLoading(false)
       }
     },
-    [refreshCustomers],
+    [fetchWithResilience, refreshCustomers],
   )
 
   return {

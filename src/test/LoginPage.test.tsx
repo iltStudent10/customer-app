@@ -43,14 +43,20 @@ describe('LoginPage', () => {
 
     const savedAccounts = JSON.parse(
       window.localStorage.getItem(AUTH_ACCOUNTS_STORAGE_KEY) ?? '[]',
-    ) as Array<{ username: string; password: string }>
+    ) as Array<{
+      username: string
+      password?: string
+      passwordHash?: string
+      passwordSalt?: string
+      passwordVersion?: number
+    }>
 
-    expect(savedAccounts).toEqual([
-      {
-        username: 'maria',
-        password: 'Secret#123',
-      },
-    ])
+    expect(savedAccounts).toHaveLength(1)
+    expect(savedAccounts[0].username).toBe('maria')
+    expect(savedAccounts[0].password).toBeUndefined()
+    expect(savedAccounts[0].passwordHash).toBeTruthy()
+    expect(savedAccounts[0].passwordSalt).toBeTruthy()
+    expect(savedAccounts[0].passwordVersion).toBe(2)
   })
 
   it('logs in with an existing account', async () => {

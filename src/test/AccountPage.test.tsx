@@ -17,7 +17,14 @@ describe('AccountPage', () => {
     )
     window.localStorage.setItem(
       AUTH_ACCOUNTS_STORAGE_KEY,
-      JSON.stringify([{ username: 'maria', password: 'Secret#123' }]),
+      JSON.stringify([
+        {
+          username: 'maria',
+          passwordHash: 'legacy-hash',
+          passwordSalt: 'legacy-salt',
+          passwordVersion: 2,
+        },
+      ]),
     )
   })
 
@@ -52,10 +59,21 @@ describe('AccountPage', () => {
     ) as { username?: string }
     const savedAccounts = JSON.parse(
       window.localStorage.getItem(AUTH_ACCOUNTS_STORAGE_KEY) ?? '[]',
-    ) as Array<{ username: string; password: string }>
+    ) as Array<{
+      username: string
+      password?: string
+      passwordHash?: string
+      passwordSalt?: string
+      passwordVersion?: number
+    }>
 
     expect(savedUser.username).toBe('maria2')
-    expect(savedAccounts).toEqual([{ username: 'maria2', password: 'Secret#123' }])
+    expect(savedAccounts).toHaveLength(1)
+    expect(savedAccounts[0].username).toBe('maria2')
+    expect(savedAccounts[0].password).toBeUndefined()
+    expect(savedAccounts[0].passwordHash).toBeTruthy()
+    expect(savedAccounts[0].passwordSalt).toBeTruthy()
+    expect(savedAccounts[0].passwordVersion).toBe(2)
   })
 
   it('shows an error when current password is wrong during password update', async () => {
@@ -66,10 +84,17 @@ describe('AccountPage', () => {
     await userEvent.type(screen.getByLabelText('Confirm New Password'), 'Better#123')
     await userEvent.click(screen.getByRole('button', { name: 'Update Password' }))
 
-    expect(screen.getByText('Current password is incorrect.')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Current password is incorrect.')).toBeInTheDocument()
+    })
   })
 
   it('updates password when current password is correct', async () => {
+    window.localStorage.setItem(
+      AUTH_ACCOUNTS_STORAGE_KEY,
+      JSON.stringify([{ username: 'maria', password: 'Secret#123' }]),
+    )
+
     renderPage()
 
     await userEvent.type(screen.getByLabelText('Current Password'), 'Secret#123')
@@ -83,8 +108,19 @@ describe('AccountPage', () => {
 
     const savedAccounts = JSON.parse(
       window.localStorage.getItem(AUTH_ACCOUNTS_STORAGE_KEY) ?? '[]',
-    ) as Array<{ username: string; password: string }>
+    ) as Array<{
+      username: string
+      password?: string
+      passwordHash?: string
+      passwordSalt?: string
+      passwordVersion?: number
+    }>
 
-    expect(savedAccounts).toEqual([{ username: 'maria', password: 'Better#123' }])
+    expect(savedAccounts).toHaveLength(1)
+    expect(savedAccounts[0].username).toBe('maria')
+    expect(savedAccounts[0].password).toBeUndefined()
+    expect(savedAccounts[0].passwordHash).toBeTruthy()
+    expect(savedAccounts[0].passwordSalt).toBeTruthy()
+    expect(savedAccounts[0].passwordVersion).toBe(2)
   })
 })

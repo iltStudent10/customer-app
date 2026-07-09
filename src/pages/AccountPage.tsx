@@ -13,46 +13,58 @@ export function AccountPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isUpdatingUsername, setIsUpdatingUsername] = useState(false)
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
 
   const handleLogout = () => {
     logout()
     navigate('/', { replace: true })
   }
 
-  const handleUsernameSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleUsernameSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     setSuccess(null)
+    setIsUpdatingUsername(true)
 
-    const result = updateUsername(newUsername)
-    if (!result.success) {
-      setError(result.error ?? 'Unable to update username.')
-      return
+    try {
+      const result = await updateUsername(newUsername)
+      if (!result.success) {
+        setError(result.error ?? 'Unable to update username.')
+        return
+      }
+
+      setSuccess('Username updated successfully.')
+    } finally {
+      setIsUpdatingUsername(false)
     }
-
-    setSuccess('Username updated successfully.')
   }
 
-  const handlePasswordSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
     setSuccess(null)
+    setIsUpdatingPassword(true)
 
-    if (newPassword.trim() !== confirmNewPassword.trim()) {
-      setError('New password and confirm password must match.')
-      return
+    try {
+      if (newPassword.trim() !== confirmNewPassword.trim()) {
+        setError('New password and confirm password must match.')
+        return
+      }
+
+      const result = await updatePassword(currentPassword, newPassword)
+      if (!result.success) {
+        setError(result.error ?? 'Unable to update password.')
+        return
+      }
+
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmNewPassword('')
+      setSuccess('Password updated successfully.')
+    } finally {
+      setIsUpdatingPassword(false)
     }
-
-    const result = updatePassword(currentPassword, newPassword)
-    if (!result.success) {
-      setError(result.error ?? 'Unable to update password.')
-      return
-    }
-
-    setCurrentPassword('')
-    setNewPassword('')
-    setConfirmNewPassword('')
-    setSuccess('Password updated successfully.')
   }
 
   return (
@@ -88,6 +100,7 @@ export function AccountPage() {
       </div>
 
       <form className="customer-form" onSubmit={handleUsernameSubmit}>
+        <fieldset disabled={isUpdatingUsername}>
         <h3 className="page-subtitle">Change Username</h3>
         <div className="form-grid">
           <div className="form-field">
@@ -104,12 +117,14 @@ export function AccountPage() {
         </div>
         <div className="form-actions">
           <button type="submit" className="primary-button">
-            Update Username
+            {isUpdatingUsername ? 'Updating Username...' : 'Update Username'}
           </button>
         </div>
+        </fieldset>
       </form>
 
       <form className="customer-form account-form-spacing" onSubmit={handlePasswordSubmit}>
+        <fieldset disabled={isUpdatingPassword}>
         <h3 className="page-subtitle">Change Password</h3>
         <div className="form-grid">
           <div className="form-field">
@@ -148,9 +163,10 @@ export function AccountPage() {
         </div>
         <div className="form-actions">
           <button type="submit" className="primary-button">
-            Update Password
+            {isUpdatingPassword ? 'Updating Password...' : 'Update Password'}
           </button>
         </div>
+        </fieldset>
       </form>
     </section>
   )

@@ -9,6 +9,7 @@ import {
 const AUTH_STORAGE_KEY = 'customer-manager-auth-user'
 const AUTH_ACCOUNTS_STORAGE_KEY = 'customer-manager-auth-accounts'
 const MIN_PASSWORD_LENGTH = 8
+const HASH_VERSION = 2
 
 interface AuthUser {
   username: string
@@ -16,8 +17,17 @@ interface AuthUser {
 
 interface AuthAccount {
   username: string
+  passwordHash: string
+  passwordSalt: string
+  passwordVersion: number
+}
+
+interface LegacyAuthAccount {
+  username: string
   password: string
 }
+
+type StoredAuthAccount = AuthAccount | LegacyAuthAccount
 
 interface AuthResult {
   success: boolean
@@ -27,10 +37,10 @@ interface AuthResult {
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => boolean
-  register: (username: string, password: string) => AuthResult
-  updateUsername: (newUsername: string) => AuthResult
-  updatePassword: (currentPassword: string, newPassword: string) => AuthResult
+  login: (username: string, password: string) => Promise<AuthResult>
+  register: (username: string, password: string) => Promise<AuthResult>
+  updateUsername: (newUsername: string) => Promise<AuthResult>
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>
   logout: () => void
 }
 
@@ -95,7 +105,7 @@ function getInitialAccounts(): AuthAccount[] {
   }
 
   try {
-    const parsedAccounts = JSON.parse(storedAccounts) as AuthAccount[]
+    const parsedAccounts = JSON.parse(storedAccounts) as StoredAuthAccount[]
     if (!Array.isArray(parsedAccounts)) {
       return []
     }
@@ -104,21 +114,88 @@ function getInitialAccounts(): AuthAccount[] {
       (account) =>
         typeof account.username === 'string' &&
         account.username.trim() &&
-        typeof account.password === 'string' &&
-        account.password.trim(),
-    )
+        ((
+          'passwordHash' in account &&
+          'passwordSalt' in account &&
+          'passwordVersion' in account &&
+          typeof account.passwordHash === 'string' &&
+          account.passwordHash.trim() &&
+          typeof account.passwordSalt === 'string' &&
+          account.passwordSalt.trim() &&
+          typeof account.passwordVersion === 'number'
+        ) ||
+          ('password' in account &&
+            typeof account.password === 'string' &&
+            account.password.trim())),
+    ) as AuthAccount[]
   } catch {
     return []
   }
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')
+}
+
+async function sha256(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value)
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data)
+  return bytesToHex(new Uint8Array(hashBuffer))
+}
+
+function generateSalt(length = 16): string {
+  const bytes = new Uint8Array(length)
+  window.crypto.getRandomValues(bytes)
+  return bytesToHex(bytes)
+}
+
+async function createHashedAccount(
+  username: string,
+  password: string,
+): Promise<AuthAccount> {
+  const passwordSalt = generateSalt()
+  const passwordHash = await sha256(`${passwordSalt}:${password}`)
+
+  return {
+    username,
+    passwordHash,
+    passwordSalt,
+    passwordVersion: HASH_VERSION,
+  }
+}
+
+function isHashedAccount(account: StoredAuthAccount): account is AuthAccount {
+  return (
+    'passwordHash' in account &&
+    'passwordSalt' in account &&
+    'passwordVersion' in account &&
+    typeof account.passwordHash === 'string' &&
+    typeof account.passwordSalt === 'string' &&
+    typeof account.passwordVersion === 'number'
+  )
+}
+
+async function verifyPassword(
+  account: StoredAuthAccount,
+  candidatePassword: string,
+): Promise<boolean> {
+  if (isHashedAccount(account)) {
+    const candidateHash = await sha256(`${account.passwordSalt}:${candidatePassword}`)
+    return account.passwordHash === candidateHash
+  }
+
+  return account.password === candidatePassword
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(getInitialUser)
-  const [accounts, setAccounts] = useState<AuthAccount[]>(getInitialAccounts)
+  const [accounts, setAccounts] = useState<StoredAuthAccount[]>(getInitialAccounts)
 
-  const persistAccounts = useCallback((nextAccounts: AuthAccount[]) => {
+  const persistAccounts = useCallback((nextAccounts: StoredAuthAccount[]) => {
     setAccounts(nextAccounts)
     window.localStorage.setItem(
       AUTH_ACCOUNTS_STORAGE_KEY,
@@ -126,32 +203,58 @@ export function AuthProvider({ children }: PropsWithChildren) {
     )
   }, [])
 
-  const login = useCallback((username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string): Promise<AuthResult> => {
     const normalizedUsername = username.trim()
     const normalizedPassword = password.trim()
 
     if (!normalizedUsername || !normalizedPassword) {
-      return false
+      return {
+        success: false,
+        error: 'Enter both username and password.',
+      }
     }
 
-    const matchingAccount = accounts.find(
+    const matchingAccountIndex = accounts.findIndex(
       (account) =>
         normalizeUsername(account.username) === normalizeUsername(normalizedUsername) &&
-        account.password === normalizedPassword,
+        account.username.trim(),
     )
 
-    if (!matchingAccount) {
-      return false
+    if (matchingAccountIndex === -1) {
+      return {
+        success: false,
+        error: 'Invalid username or password.',
+      }
+    }
+
+    const matchingAccount = accounts[matchingAccountIndex]
+    const passwordMatches = await verifyPassword(matchingAccount, normalizedPassword)
+
+    if (!passwordMatches) {
+      return {
+        success: false,
+        error: 'Invalid username or password.',
+      }
+    }
+
+    if (!isHashedAccount(matchingAccount)) {
+      const upgradedAccount = await createHashedAccount(
+        matchingAccount.username,
+        normalizedPassword,
+      )
+      const nextAccounts = [...accounts]
+      nextAccounts[matchingAccountIndex] = upgradedAccount
+      persistAccounts(nextAccounts)
     }
 
     const nextUser = { username: matchingAccount.username }
     setUser(nextUser)
     window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
-    return true
-  }, [accounts])
+    return { success: true }
+  }, [accounts, persistAccounts])
 
   const register = useCallback(
-    (username: string, password: string): AuthResult => {
+    async (username: string, password: string): Promise<AuthResult> => {
       const normalizedUsername = username.trim()
       const normalizedPassword = password.trim()
 
@@ -183,10 +286,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       }
 
-      const nextAccount = {
-        username: normalizedUsername,
-        password: normalizedPassword,
-      }
+      const nextAccount = await createHashedAccount(
+        normalizedUsername,
+        normalizedPassword,
+      )
       const nextAccounts = [...accounts, nextAccount]
       persistAccounts(nextAccounts)
 
@@ -205,7 +308,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const updateUsername = useCallback(
-    (newUsername: string): AuthResult => {
+    async (newUsername: string): Promise<AuthResult> => {
       if (!user) {
         return {
           success: false,
@@ -274,7 +377,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   )
 
   const updatePassword = useCallback(
-    (currentPassword: string, newPassword: string): AuthResult => {
+    async (currentPassword: string, newPassword: string): Promise<AuthResult> => {
       if (!user) {
         return {
           success: false,
@@ -304,7 +407,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const currentAccount = accounts[currentAccountIndex]
-      if (currentAccount.password !== normalizedCurrentPassword) {
+      const currentPasswordMatches = await verifyPassword(
+        currentAccount,
+        normalizedCurrentPassword,
+      )
+
+      if (!currentPasswordMatches) {
         return {
           success: false,
           error: 'Current password is incorrect.',
@@ -327,10 +435,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const nextAccounts = [...accounts]
-      nextAccounts[currentAccountIndex] = {
-        ...currentAccount,
-        password: normalizedNewPassword,
-      }
+      nextAccounts[currentAccountIndex] = await createHashedAccount(
+        currentAccount.username,
+        normalizedNewPassword,
+      )
       persistAccounts(nextAccounts)
 
       return {
