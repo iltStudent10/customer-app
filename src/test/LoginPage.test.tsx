@@ -1,15 +1,34 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../context/AuthContext'
+import { useCustomerApi } from '../hooks/useCustomerApi'
 import { LoginPage } from '../pages/LoginPage'
 
 const AUTH_ACCOUNTS_STORAGE_KEY = 'customer-manager-auth-accounts'
 
+vi.mock('../hooks/useCustomerApi', () => ({
+  useCustomerApi: vi.fn(),
+}))
+
 describe('LoginPage', () => {
+  const addCustomer = vi.fn()
+  const isEmailInUse = vi.fn()
+
   beforeEach(() => {
     window.localStorage.clear()
+    vi.restoreAllMocks()
+    addCustomer.mockReset()
+    isEmailInUse.mockReset()
+    isEmailInUse.mockResolvedValue(false)
+    addCustomer.mockResolvedValue(true)
+
+    vi.mocked(useCustomerApi).mockReturnValue({
+      addCustomer,
+      isEmailInUse,
+      error: null,
+    } as unknown as ReturnType<typeof useCustomerApi>)
   })
 
   function renderPage(initialPath = '/login') {
@@ -31,7 +50,13 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Email or Phone'), 'maria')
+    await userEvent.type(screen.getByLabelText('Name'), 'Maria Garcia')
+    await userEvent.type(screen.getByLabelText('Email'), 'maria.garcia@example.com')
+    await userEvent.type(screen.getByLabelText('Phone'), '5550101')
+    await userEvent.type(screen.getByLabelText('Address'), '742 Evergreen Terrace')
+    await userEvent.type(screen.getByLabelText('City'), 'Springfield')
+    await userEvent.type(screen.getByLabelText('State'), 'il')
+    await userEvent.type(screen.getByLabelText('ZIP'), '62704')
     await userEvent.type(screen.getByLabelText('Password'), 'Secret#123')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'Secret#123')
 
@@ -52,11 +77,46 @@ describe('LoginPage', () => {
     }>
 
     expect(savedAccounts).toHaveLength(1)
-    expect(savedAccounts[0].username).toBe('maria')
+    expect(savedAccounts[0].username).toBe('maria.garcia@example.com')
     expect(savedAccounts[0].password).toBeUndefined()
     expect(savedAccounts[0].passwordHash).toBeTruthy()
     expect(savedAccounts[0].passwordSalt).toBeTruthy()
     expect(savedAccounts[0].passwordVersion).toBe(2)
+
+    expect(isEmailInUse).toHaveBeenCalledWith('maria.garcia@example.com')
+    expect(addCustomer).toHaveBeenCalledWith({
+      name: 'Maria Garcia',
+      email: 'maria.garcia@example.com',
+      phone: '5550101',
+      address: '742 Evergreen Terrace',
+      city: 'Springfield',
+      state: 'IL',
+      zip: '62704',
+    })
+  })
+
+  it('shows customer duplicate validation and does not create account', async () => {
+    isEmailInUse.mockResolvedValue(true)
+
+    renderPage('/login')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
+    await userEvent.type(screen.getByLabelText('Name'), 'New Person')
+    await userEvent.type(screen.getByLabelText('Email'), 'newperson@example.com')
+    await userEvent.type(screen.getByLabelText('Phone'), '5551111')
+    await userEvent.type(screen.getByLabelText('Password'), 'Secret#123')
+    await userEvent.type(screen.getByLabelText('Confirm Password'), 'Secret#123')
+
+    await userEvent.click(screen.getByRole('button', { name: /^Create Account$/ }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('A customer with this email already exists.'),
+      ).toBeInTheDocument()
+    })
+
+    expect(addCustomer).not.toHaveBeenCalled()
+    expect(screen.queryByRole('heading', { name: 'Home', level: 2 })).not.toBeInTheDocument()
   })
 
   it('logs in with an existing account', async () => {
@@ -81,7 +141,9 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Email or Phone'), 'aisha')
+    await userEvent.type(screen.getByLabelText('Name'), 'Aisha Patel')
+    await userEvent.type(screen.getByLabelText('Email'), 'aisha@example.com')
+    await userEvent.type(screen.getByLabelText('Phone'), '5550103')
     await userEvent.type(screen.getByLabelText('Password'), 'short')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'short')
 
@@ -98,7 +160,9 @@ describe('LoginPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create Account' }))
 
-    await userEvent.type(screen.getByLabelText('Email or Phone'), 'nina')
+    await userEvent.type(screen.getByLabelText('Name'), 'Nina Flores')
+    await userEvent.type(screen.getByLabelText('Email'), 'nina@example.com')
+    await userEvent.type(screen.getByLabelText('Phone'), '5550133')
     await userEvent.type(screen.getByLabelText('Password'), 'Password1')
     await userEvent.type(screen.getByLabelText('Confirm Password'), 'Password1')
 

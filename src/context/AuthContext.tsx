@@ -45,12 +45,21 @@ interface AuthResult {
   error?: string
 }
 
+interface RegistrationProfile {
+  email?: string
+  phone?: string
+}
+
 interface AuthContextValue {
   user: AuthUser | null
   isAuthenticated: boolean
   isAdmin: boolean
   login: (identifier: string, password: string) => Promise<AuthResult>
-  register: (username: string, password: string) => Promise<AuthResult>
+  register: (
+    identifier: string,
+    password: string,
+    profile?: RegistrationProfile,
+  ) => Promise<AuthResult>
   updateUsername: (newUsername: string) => Promise<AuthResult>
   updatePassword: (currentPassword: string, newPassword: string) => Promise<AuthResult>
   logout: () => void
@@ -369,11 +378,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [accounts, persistAccounts])
 
   const register = useCallback(
-    async (username: string, password: string): Promise<AuthResult> => {
-      const normalizedUsername = username.trim()
+    async (
+      identifier: string,
+      password: string,
+      profile?: RegistrationProfile,
+    ): Promise<AuthResult> => {
+      const normalizedIdentifier = identifier.trim()
       const normalizedPassword = password.trim()
 
-      if (!normalizedUsername || !normalizedPassword) {
+      if (!normalizedIdentifier || !normalizedPassword) {
         return {
           success: false,
           error: 'Enter both email or phone and password to create an account.',
@@ -388,15 +401,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       }
 
-      const normalizedTextIdentifier = normalizeUsername(normalizedUsername)
-      const normalizedPhoneIdentifier = normalizePhone(normalizedUsername)
+      const normalizedTextIdentifier = normalizeUsername(normalizedIdentifier)
+      const normalizedPhoneIdentifier = normalizePhone(normalizedIdentifier)
+      const normalizedProfileEmail = profile?.email
+        ? normalizeUsername(profile.email)
+        : ''
+      const normalizedProfilePhone = profile?.phone
+        ? normalizePhone(profile.phone)
+        : ''
+      const registrationIdentifiers = new Set(
+        [
+          normalizedTextIdentifier,
+          normalizedPhoneIdentifier,
+          normalizedProfileEmail,
+          normalizedProfilePhone,
+        ].filter(Boolean),
+      )
       const usernameAlreadyExists = accounts.some((account) => {
         const accountIdentifiers = getNormalizedAccountIdentifiers(account)
-        return (
-          accountIdentifiers.includes(normalizedTextIdentifier) ||
-          (normalizedPhoneIdentifier
-            ? accountIdentifiers.includes(normalizedPhoneIdentifier)
-            : false)
+        return accountIdentifiers.some((accountIdentifier) =>
+          registrationIdentifiers.has(accountIdentifier),
         )
       })
 
@@ -409,7 +433,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const nextAccount = await createHashedAccount(
         {
-          ...toAccountIdentifierFields(normalizedUsername),
+          ...toAccountIdentifierFields(normalizedIdentifier),
+          ...(profile?.email ? { email: normalizeUsername(profile.email) } : {}),
+          ...(profile?.phone ? { phone: normalizePhone(profile.phone) } : {}),
           role: 'user',
         },
         normalizedPassword,

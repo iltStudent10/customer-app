@@ -1,10 +1,16 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import type { CustomerFormData } from '../types/customer'
 
 interface CustomerFormProps {
   initialData?: CustomerFormData
   onSubmit: (formData: CustomerFormData) => void | Promise<void>
   onCancel: () => void
+  submitLabel?: string
+  cancelLabel?: string
+  isDisabled?: boolean
+  showActions?: boolean
+  formId?: string
+  extraContent?: ReactNode
 }
 
 const emptyFormData: CustomerFormData = {
@@ -27,7 +33,17 @@ const fieldLabels: Record<keyof CustomerFormData, string> = {
   zip: 'ZIP',
 }
 
-export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormProps) {
+export function CustomerForm({
+  initialData,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  cancelLabel,
+  isDisabled = false,
+  showActions = true,
+  formId,
+  extraContent,
+}: CustomerFormProps) {
   const [formData, setFormData] = useState<CustomerFormData>(
     initialData ?? emptyFormData,
   )
@@ -216,7 +232,8 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
   }
 
   return (
-    <form className="customer-form" onSubmit={handleSubmit} noValidate>
+    <form id={formId} className="customer-form" onSubmit={handleSubmit} noValidate>
+      <fieldset disabled={isDisabled}>
       {errorEntries.length > 0 && (
         <div
           className="form-error-summary"
@@ -375,14 +392,19 @@ export function CustomerForm({ initialData, onSubmit, onCancel }: CustomerFormPr
         </div>
       </div>
 
-      <div className="form-actions">
-        <button type="button" className="secondary-button" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="submit" className="primary-button">
-          {isEditMode ? 'Update Customer' : 'Add Customer'}
-        </button>
-      </div>
+      {extraContent}
+
+      {showActions && (
+        <div className="form-actions">
+          <button type="button" className="secondary-button" onClick={onCancel}>
+            {cancelLabel ?? 'Cancel'}
+          </button>
+          <button type="submit" className="primary-button">
+            {submitLabel ?? (isEditMode ? 'Update Customer' : 'Add Customer')}
+          </button>
+        </div>
+      )}
+      </fieldset>
     </form>
   )
 }

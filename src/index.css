@@ -453,6 +453,10 @@ body {
   gap: 1rem;
 }
 
+.create-account-password-section {
+  margin-top: 1rem;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;
